@@ -26,8 +26,8 @@ def main():
     default_configs = {
         "PORT": "127.0.0.1:8888",
         "XRAY_UUID": str(uuid.uuid4()),
-        "FAKE_SNI": "api24-normal-alisg.tiktokv.com#Free Tiktok,172.67.168.158#Free Vina Ko Nen",
-        "WS_PATH": "/tiktok4g",
+        "FAKE_SNI": "api24-normal-alisg.tiktokv.com#FreeTiktok,172.67.168.158#FreeVina Ko Nen",
+        "WS_PATH": "/vless",
         "WS_HOST": "trycloudflare.com",
         "TRANSPORT": "websocket",
         "XHTTP_MODE": "packet-up",
@@ -35,7 +35,7 @@ def main():
         "WEBHOOK_URL": "",
         "TUNNEL_TOKEN": "",
         "COUNTRY_CODE": "",
-        "PORT_MODE": "both",
+        "PORT_MODE": "443",
         "RUN_MODE": "quick_tunnel"
     }
     START_TIME = int(time.time())
@@ -73,7 +73,7 @@ def main():
     PORT_ENV = get_os_env("PORT")
     UUID = get_os_env("XRAY_UUID")
     FAKE_SNI = get_os_env("FAKE_SNI")
-    WS_PATH = get_os_env("WS_PATH")
+    WS_PATH = "/vless"
     WS_HOST = get_os_env("WS_HOST")
     WEBHOOK_URL = get_os_env("WEBHOOK_URL")
     TUNNEL_TOKEN = get_os_env("TUNNEL_TOKEN").strip()
@@ -83,7 +83,7 @@ def main():
     COUNTRY_CODE = get_os_env("COUNTRY_CODE").strip().upper()
     PORT_MODE = get_os_env("PORT_MODE").strip().lower()
     if PORT_MODE not in ("80", "443", "both"):
-        PORT_MODE = "both"
+        PORT_MODE = "443"
 
     # Normalize RUN_MODE. Old .env files without RUN_MODE default to quick_tunnel.
     ALLOWED_RUN_MODES = ("quick_tunnel", "named_tunnel", "direct")
@@ -170,9 +170,6 @@ def main():
         thread = threading.Thread(target=task)
         thread.daemon = True
         thread.start()
-
-    if not WS_PATH.startswith("/"):
-        WS_PATH = "/" + WS_PATH
 
     XRAY_BIN = "./xray.exe" if platform.system().lower() == "windows" else "./xray"
     CLF_BIN = "./cloudflared.exe" if platform.system().lower() == "windows" else "./cloudflared"
@@ -443,8 +440,8 @@ def main():
 
     # Friendly name map for known FAKE_SNI hostnames
     FRIENDLY_NAME_MAP = {
-        "api24-normal-alisg.tiktokv.com": "Free Tiktok",
-        "172.67.168.158": "Free Vina Ko Nen",
+        "api24-normal-alisg.tiktokv.com": "FreeTiktok",
+        "172.67.168.158": "FreeVina Ko Nen",
     }
 
     def flag_emoji(cc):
@@ -465,18 +462,20 @@ def main():
         def add_link(sni, transport, label):
             params = f"type={'ws' if transport == 'websocket' else 'xhttp'}&encryption=none&security="
             xhttp_params = f"&mode={XHTTP_MODE}" if transport == "xhttp" else ""
+            link_name = urllib.parse.quote(f"{label} {'WS' if transport == 'websocket' else 'XHTTP'}", safe='')
             if PORT_MODE in ("443", "both"):
                 tls_params = f"tls&path={encoded_path}&host={tunnel_host_info}&sni={tunnel_host_info}{xhttp_params}"
                 if transport == "xhttp": tls_params += "&alpn=h3%2Ch2"
-                payloads.append(f"vless://{uuid_str}@{sni}:443?{params}{tls_params}#{urllib.parse.quote(label + ' 443', safe='')}")
+                payloads.append(f"vless://{uuid_str}@{sni}:443?{params}{tls_params}#{link_name}")
             if PORT_MODE in ("80", "both") and RUN_MODE != "direct":
-                payloads.append(f"vless://{uuid_str}@{sni}:80?{params}&path={encoded_path}&host={tunnel_host_info}{xhttp_params}#{urllib.parse.quote(label + ' 80', safe='')}")
+                payloads.append(f"vless://{uuid_str}@{sni}:80?{params}&path={encoded_path}&host={tunnel_host_info}{xhttp_params}#{link_name}")
 
         for sni_entry in fake_sni.split(","):
             sni_entry = sni_entry.strip()
             if not sni_entry: continue
             sni, separator, remark = sni_entry.partition("#")
             sni, remark = sni.strip(), remark.strip()
+            remark = {"Free Tiktok": "FreeTiktok", "Free Vina Ko Nen": "FreeVina Ko Nen"}.get(remark, remark)
             base_label = remark or FRIENDLY_NAME_MAP.get(sni) or sni
             label = f"{country_prefix}{base_label}"
             for transport in TRANSPORTS:

@@ -16,13 +16,13 @@ SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 DEF_PORT_QUICK="127.0.0.1:8888"
 DEF_PORT_NAMED="127.0.0.1:8888"
 DEF_PORT_DIRECT="0.0.0.0:80"
-DEF_FAKE_SNI="api24-normal-alisg.tiktokv.com#Free Tiktok,172.67.168.158#Free Vina Ko Nen"
-DEF_WS_PATH="/tiktok4g"
+DEF_FAKE_SNI="api24-normal-alisg.tiktokv.com#FreeTiktok,172.67.168.158#FreeVina Ko Nen"
+DEF_WS_PATH="/vless"
 DEF_WS_HOST="trycloudflare.com"
-DEF_TRANSPORT="websocket"
+DEF_TRANSPORT="websocket,xhttp"
 DEF_XHTTP_MODE="packet-up"
 
-RUN_MODE=""; PORT=""; UUID=""; FAKE_SNI=""; WS_PATH=""; WS_HOST=""; TUNNEL_TOKEN=""; ENABLE_WARP="false"; WEBHOOK_URL=""; TRANSPORT="websocket"; XHTTP_MODE="packet-up"; COUNTRY_CODE=""; CUSTOM_DOMAIN=""; PORT_MODE=""
+RUN_MODE=""; PORT=""; UUID=""; FAKE_SNI=""; WS_PATH=""; WS_HOST=""; TUNNEL_TOKEN=""; ENABLE_WARP="false"; WEBHOOK_URL=""; TRANSPORT="websocket,xhttp"; XHTTP_MODE="packet-up"; COUNTRY_CODE=""; CUSTOM_DOMAIN=""; PORT_MODE="443"
 
 header(){ echo; echo -e "${CYAN}===================================================${NC}"; echo -e "${GREEN} $1${NC}"; echo -e "${CYAN}===================================================${NC}"; }
 ok(){ echo -e " ${GREEN}[OK]${NC} $1"; }
@@ -31,15 +31,15 @@ err(){ echo -e " ${RED}[ERR]${NC} $1"; }
 info(){ echo -e " ${BLUE}[i]${NC}  $1"; }
 setup_step(){
     echo
-    echo -e " ${CYAN}[$1]${NC} ${GREEN}$2${NC}"
-    echo " ───────────────────────────────────────"
+    echo -e "${CYAN}===================================================${NC}"
+    echo -e " ${GREEN}BUOC $1${NC}  $2"
+    echo -e "${CYAN}===================================================${NC}"
 }
 pause_next(){ echo; read -r -p " Press Enter to continue..." _; }
 ask_yes_no(){ local ans hint default="${2:-y}"; [ "$default" = "y" ] && hint="Y/n" || hint="y/N"; read -r -p " $1 [$hint]: " ans; ans="${ans:-$default}"; [[ "$ans" =~ ^[Yy]$ ]]; }
 ask_val(){ local prompt="$1" default="$2" ans; read -r -p " $prompt [$default]: " ans; [ -n "$ans" ] && echo "$ans" || echo "$default"; }
 ask_country(){
     local ans cc
-    echo
     echo -e " ${BLUE}[i]${NC}  Server country flag (optional)"
     echo -e "      Hint: VN  JP  US  SG  DE  FR  KR  HK  TW  NL  GB  AU  CA"
     read -r -p " Country code (Enter to skip) [${COUNTRY_CODE:-}]: " ans
@@ -50,33 +50,39 @@ ask_country(){
     [ -n "$COUNTRY_CODE" ] && ok "Country: $COUNTRY_CODE" || info "No country flag."
 }
 ask_fake_sni(){
-    local choice
-    echo
+    local choice default_choice="3"
+    case "$FAKE_SNI" in
+        "api24-normal-alisg.tiktokv.com#FreeTiktok"|"api24-normal-alisg.tiktokv.com#Free Tiktok") default_choice="1" ;;
+        "172.67.168.158#FreeVina Ko Nen"|"172.67.168.158#Free Vina Ko Nen") default_choice="2" ;;
+        "$DEF_FAKE_SNI"|"api24-normal-alisg.tiktokv.com#Free Tiktok,172.67.168.158#Free Vina Ko Nen"|"") ;;
+        *) default_choice="tuy chinh" ;;
+    esac
     echo -e " ${BLUE}[i]${NC}  FAKE_SNI selection:"
-    echo "   1) Free Tiktok  (api24-normal-alisg.tiktokv.com)"
-    echo "   2) Free Vina Ko Nen  (172.67.168.158)"
-    echo "   3) Ca hai (mac dinh)"
+    echo "   1. FreeTiktok  (api24-normal-alisg.tiktokv.com)"
+    echo "   2. FreeVina Ko Nen  (172.67.168.158)"
+    echo "   3. Ca hai (mac dinh)"
     echo "   Hoac nhap gia tri FAKE_SNI tuy chinh"
-    read -r -p " Chon [1/2/3/tuy chinh]: " choice
+    read -r -p " Chon [1/2/3/tuy chinh] [$default_choice]: " choice
+    choice="${choice:-$default_choice}"
     case "$choice" in
-        1) FAKE_SNI="api24-normal-alisg.tiktokv.com#Free Tiktok" ;;
-        2) FAKE_SNI="172.67.168.158#Free Vina Ko Nen" ;;
-        3|"") FAKE_SNI="$DEF_FAKE_SNI" ;;
+        1) FAKE_SNI="api24-normal-alisg.tiktokv.com#FreeTiktok" ;;
+        2) FAKE_SNI="172.67.168.158#FreeVina Ko Nen" ;;
+        3) FAKE_SNI="$DEF_FAKE_SNI" ;;
+        "tuy chinh") ;;
         *) FAKE_SNI="$choice" ;;
     esac
     ok "FAKE_SNI: $FAKE_SNI"
 }
 ask_transport(){
-    local choice mode_choice default_choice="1"
+    local choice mode_choice default_choice="3"
     case "$TRANSPORT" in
         xhttp) default_choice="2" ;;
-        websocket,xhttp|xhttp,websocket) default_choice="3" ;;
+        websocket) default_choice="1" ;;
     esac
-    echo
     echo -e " ${BLUE}[i]${NC}  Chon transport:"
-    echo "   1) WebSocket (on dinh / ho tro client rong nhat)"
-    echo "   2) xHTTP (transport HTTP hien dai)"
-    echo "   3) Ca WebSocket + xHTTP"
+    echo "   1. WebSocket (on dinh / ho tro client rong nhat)"
+    echo "   2. xHTTP (transport HTTP hien dai)"
+    echo "   3. Ca WebSocket + xHTTP"
     read -r -p " Chon [1/2/3] [$default_choice]: " choice
     choice="${choice:-$default_choice}"
     case "$choice" in
@@ -86,7 +92,10 @@ ask_transport(){
         *) warn "Lua chon khong hop le; giu lai $TRANSPORT." ;;
     esac
     if [[ "$TRANSPORT" == *xhttp* ]]; then
-        echo "   xHTTP mode: 1) packet-up  2) stream-up  3) stream-one"
+        echo "   xHTTP mode:"
+        echo "   1. packet-up"
+        echo "   2. stream-up"
+        echo "   3. stream-one"
         case "$XHTTP_MODE" in stream-up) mode_choice=2 ;; stream-one) mode_choice=3 ;; *) mode_choice=1 ;; esac
         read -r -p " Chon xHTTP mode [1/2/3] [$mode_choice]: " choice
         choice="${choice:-$mode_choice}"
@@ -100,24 +109,23 @@ ask_transport(){
 }
 quick_tunnel_transport(){
     TRANSPORT="websocket"
-    echo "   1) WebSocket"
     warn "Luu y: Quick Tunnel (trycloudflare.com) khong ho tro xHTTP."
     ok "Transport: WebSocket"
 }
 
 ask_port_mode(){
-    local choice
-    echo
+    local choice default_choice="2"
     echo -e " ${BLUE}[i]${NC}  Chon port cho link VLESS:"
-    echo "   1) Chi port 80 (KHONG TLS)"
-    echo "   2) Chi port 443 (TLS)"
-    echo "   3) Ca 80 + 443 (mac dinh)"
-    read -r -p " Chon [1/2/3]: " choice
+    echo "   1. Chi port 80 (KHONG TLS)"
+    echo "   2. Chi port 443 (TLS, mac dinh)"
+    echo "   3. Ca 80 + 443"
+    read -r -p " Chon [1/2/3] [$default_choice]: " choice
+    choice="${choice:-$default_choice}"
     case "$choice" in
         1) PORT_MODE="80" ;;
         2) PORT_MODE="443" ;;
-        3|"") PORT_MODE="both" ;;
-        *) PORT_MODE="both" ;;
+        3) PORT_MODE="both" ;;
+        *) warn "Lua chon khong hop le; giu lai ${PORT_MODE:-443}."; PORT_MODE="${PORT_MODE:-443}" ;;
     esac
     ok "Che do port: $PORT_MODE"
 }
@@ -274,13 +282,14 @@ write_env(){
 load_existing(){
     [ -f .env ] || return 0
     UUID="$(env_get XRAY_UUID)"; FAKE_SNI="$(env_get FAKE_SNI)"
-    WS_PATH="$(env_get WS_PATH)"; WS_HOST="$(env_get WS_HOST)"
+    WS_PATH="$DEF_WS_PATH"; WS_HOST="$(env_get WS_HOST)"
     TUNNEL_TOKEN="$(env_get TUNNEL_TOKEN)"; ENABLE_WARP="$(env_get ENABLE_WARP)"
     WEBHOOK_URL="$(env_get WEBHOOK_URL)"; TRANSPORT="$(env_get TRANSPORT)"; XHTTP_MODE="$(env_get XHTTP_MODE)"
     XHTTP_MODE="${XHTTP_MODE:-$DEF_XHTTP_MODE}"
     COUNTRY_CODE="$(env_get COUNTRY_CODE)"
     CUSTOM_DOMAIN="$(env_get CUSTOM_DOMAIN)"
     PORT_MODE="$(env_get PORT_MODE)"
+    PORT_MODE="${PORT_MODE:-443}"
 }
 
 # ==================== Systemd ====================
@@ -375,43 +384,42 @@ start_server(){
 
 # ==================== Cac che do cai dat ====================
 quick_mode(){
-    header "1. Quick Tunnel (trycloudflare.com)"
+    header "Quick Tunnel"
     info "Khong can domain. Cloudflare cap hostname ngau nhien sau moi lan chay."
     load_existing
 
-    setup_step "1/6" "Thong tin server"
+    setup_step "1/5" "Dinh danh server"
     UUID="$(ask_val "VLESS UUID" "${UUID:-$(uuid_gen)}")"
 
-    setup_step "2/6" "Fake SNI"
+    setup_step "2/5" "Fake SNI"
     ask_fake_sni
 
-    setup_step "3/6" "Duong dan WebSocket"
-    WS_PATH="$(ask_val "Duong dan WebSocket" "${WS_PATH:-$DEF_WS_PATH}")"
+    setup_step "3/5" "Port link VLESS"
+    WS_PATH="$DEF_WS_PATH"
     quick_tunnel_transport
-
-    setup_step "4/6" "Port link VLESS"
     RUN_MODE="quick_tunnel"; PORT="$DEF_PORT_QUICK"
     [ -n "$WS_HOST" ] && [ "$WS_HOST" != "$DEF_WS_HOST" ] && CUSTOM_DOMAIN="$WS_HOST"
     WS_HOST="$DEF_WS_HOST"
     ask_port_mode
 
-    setup_step "5/6" "Vi tri node"
+    setup_step "4/5" "Vi tri node"
     ask_country
 
-    setup_step "6/6" "Luu va khoi dong"
+    setup_step "5/5" "Luu va khoi dong"
     write_env
     start_server
 }
 
 named_mode(){
-    header "2. Named Cloudflare Tunnel + domain rieng"
+    header "Named Cloudflare Tunnel"
     info "Can Cloudflare Zero Trust."
     echo -e " ${CYAN}Truoc khi tiep tuc trong Zero Trust:${NC}"
-    echo "   1. Networks -> Tunnels -> Create -> Cloudflared -> sao chep token."
-    echo -e "   2. Public Hostname -> Service = ${GREEN}http://127.0.0.1:8888${NC}"
+    echo "   - Networks -> Tunnels -> Create -> Cloudflared -> sao chep token."
+    echo -e "   - Public Hostname -> Service = ${GREEN}http://127.0.0.1:8888${NC}"
     echo
     read -r -p " Nhan Enter khi san sang..." _
     load_existing
+    [ "$(env_get RUN_MODE)" = "quick_tunnel" ] && TRANSPORT="$DEF_TRANSPORT"
 
     setup_step "1/6" "Domain va tunnel credentials"
     local def_host="${WS_HOST:-}"
@@ -426,7 +434,7 @@ named_mode(){
     ask_fake_sni
 
     setup_step "3/6" "Diem cuoi transport"
-    WS_PATH="${WS_PATH:-$DEF_WS_PATH}"; TRANSPORT="${TRANSPORT:-$DEF_TRANSPORT}"
+    WS_PATH="$DEF_WS_PATH"; TRANSPORT="${TRANSPORT:-$DEF_TRANSPORT}"
     ask_transport
 
     setup_step "4/6" "Port link VLESS"
@@ -442,15 +450,16 @@ named_mode(){
 }
 
 direct_mode(){
-    header "3. Direct Cloudflare proxied DNS -> VPS"
+    header "Direct Cloudflare"
     info "Khong dung cloudflared. Cloudflare chuyen tiep vao port 80."
     echo -e " ${CYAN}Truoc khi tiep tuc trong Cloudflare:${NC}"
-    echo -e "   1. ${GREEN}vless.example.com -> A -> <VPS IP>${NC}, proxy ${GREEN}ON${NC} (orange cloud)"
-    echo -e "   2. SSL/TLS -> ${GREEN}Flexible${NC}"
-    echo -e "   3. Cho phep TCP inbound ${GREEN}80${NC} tu IP Cloudflare"
+    echo -e "   - ${GREEN}vless.example.com -> A -> <VPS IP>${NC}, proxy ${GREEN}ON${NC} (orange cloud)"
+    echo -e "   - SSL/TLS -> ${GREEN}Flexible${NC}"
+    echo -e "   - Cho phep TCP inbound ${GREEN}80${NC} tu IP Cloudflare"
     echo
     read -r -p " Nhan Enter khi san sang..." _
     load_existing
+    [ "$(env_get RUN_MODE)" = "quick_tunnel" ] && TRANSPORT="$DEF_TRANSPORT"
 
     setup_step "1/6" "Domain va origin listener"
     local def_host="${WS_HOST:-}"
@@ -464,7 +473,7 @@ direct_mode(){
     ask_fake_sni
 
     setup_step "3/6" "Diem cuoi transport"
-    WS_PATH="${WS_PATH:-$DEF_WS_PATH}"; TRANSPORT="${TRANSPORT:-$DEF_TRANSPORT}"
+    WS_PATH="$DEF_WS_PATH"; TRANSPORT="${TRANSPORT:-$DEF_TRANSPORT}"
     ask_transport
 
     setup_step "4/6" "Port link VLESS"
@@ -584,20 +593,20 @@ while true; do
         fi
         echo
     fi
-    echo " 1. Quick Tunnel (trycloudflare.com) - khong can domain"
-    echo " 2. Named Cloudflare Tunnel + domain rieng"
-    echo " 3. Direct Cloudflare proxied DNS -> VPS"
-    echo " 4. Quan ly Service (khoi dong/dung/log/trang thai)"
+    echo " 1. [1] Quick Tunnel - [tao ngay khong can domain]"
+    echo " 2. [2] Named Cloudflare Tunnel - [can domain]"
+    echo " 3. [3] Direct Cloudflare - [can domain + public port]"
+    echo " 4. Quan ly Service"
     echo " 5. Go cai dat"
-    echo " 0. Thoat"
-    read -r -p " Chon [0-5]: " MENU_CHOICE
+    echo " 6. Thoat"
+    read -r -p " Chon [1-6]: " MENU_CHOICE
     case "$MENU_CHOICE" in
         1) quick_mode ;;
         2) named_mode ;;
         3) direct_mode ;;
         4) service_manager ;;
         5) uninstall_all ;;
-        0) exit 0 ;;
+        6) exit 0 ;;
         *) err "Lua chon khong hop le" ;;
     esac
     pause_next
