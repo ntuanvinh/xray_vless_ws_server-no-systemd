@@ -33,6 +33,8 @@ cd xray_vless_ws_server
 
 Need one subscription URL for links from multiple VPS nodes? See [Multi-VPS subscription setup](MULTI_VPS_SUBSCRIPTION.md).
 
+Running CloudFront on port 80 without TLS? See [CloudFront port 80 (no TLS): setup, cost and limits](CLOUDFRONT_NO_TLS.md).
+
 Pick a mode:
 
 1. **Quick Tunnel** — fastest, no domain. Cloudflare assigns a random `*.trycloudflare.com` hostname on every start.

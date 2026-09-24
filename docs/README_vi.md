@@ -32,6 +32,8 @@ cd xray_vless_ws_server
 
 Muốn gộp link của nhiều VPS vào một subscription? Xem [hướng dẫn Multi-VPS](MULTI_VPS_SUBSCRIPTION.md).
 
+Chạy CloudFront cổng 80 không TLS? Xem [CloudFront cổng 80 (không TLS): cấu hình, chi phí và giới hạn](CLOUDFRONT_NO_TLS_vi.md).
+
 Chọn một chế độ:
 
 1. **Quick Tunnel** — nhanh nhất, không cần domain. Cloudflare cấp một hostname `*.trycloudflare.com` ngẫu nhiên mỗi lần chạy.

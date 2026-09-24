@@ -358,9 +358,18 @@ def main():
             return None
 
         if RUN_MODE == "named_tunnel":
-            print("[*] Launching Cloudflare Named Tunnel (token mode)...")
+            # Mobile networks frequently block or destabilize QUIC/UDP. Mode 1
+            # already uses HTTP/2 on Termux, so use the same TCP-only connector
+            # path for a named tunnel instead of token mode's QUIC-first auto mode.
+            named_tunnel_args = [CLF_BIN, "tunnel", "run"]
+            if is_termux:
+                named_tunnel_args.extend(["--protocol", "http2"])
+                print("[*] Launching Cloudflare Named Tunnel (token mode, HTTP/2 for Termux)...")
+            else:
+                print("[*] Launching Cloudflare Named Tunnel (token mode)...")
+            named_tunnel_args.extend(["--token", TUNNEL_TOKEN])
             return subprocess.Popen(
-                [CLF_BIN, "tunnel", "run", "--token", TUNNEL_TOKEN],
+                named_tunnel_args,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
