@@ -414,8 +414,13 @@ start_server(){
         echo
         "$PYBIN_ABS" "$SCRIPT_DIR/main.py"
     else
-        install_service || return 1
-        wait_and_show_links
+        prepare_python || return 1
+    
+        rm -f "$SCRIPT_DIR/frp_info.config"
+    
+        echo "Starting..."
+    
+        exec "$PYBIN_ABS" "$SCRIPT_DIR/main.py"
     fi
 }
 
