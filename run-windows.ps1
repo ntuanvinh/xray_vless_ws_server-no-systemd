@@ -10,7 +10,7 @@ $Defaults = [ordered]@{
     RUN_MODE = "quick_tunnel"
     PORT = "127.0.0.1:8888"
     XRAY_UUID = ""
-    FAKE_SNI = "api24-normal-alisg.tiktokv.com#Free Tiktok,vnpt.theworkpc.com#Free Vina Ko Nen"
+    FAKE_SNI = "api24-normal-alisg.tiktokv.com#Free Tiktok,172.67.168.158#Free Vina Ko Nen"
     WS_PATH = "/tiktok4g"
     WS_HOST = "trycloudflare.com"
     TRANSPORT = "websocket"
@@ -21,9 +21,6 @@ $Defaults = [ordered]@{
     COUNTRY_CODE = ""
     CUSTOM_DOMAIN = ""
     PORT_MODE = "both"
-    SUBSCRIPTION_SYNC_URL = ""
-    SUBSCRIPTION_SYNC_TOKEN = ""
-    SUBSCRIPTION_NODE_ID = ""
 }
 $EnvKeys = @($Defaults.Keys)
 $EnvPath = Join-Path $ProjectRoot ".env"
@@ -86,29 +83,16 @@ function Write-EnvFile($Settings) {
     Write-Ok "Da ghi .env (RUN_MODE=$($Settings['RUN_MODE']))"
 }
 
-# Retained for optional Subscription Hub support. Setup modes do not call it.
-function Get-BaseHubUrl([string]$Url) {
-    return $Url -replace "/sync$", ""
-}
-
-function Normalize-HubUrl([string]$Url) {
-    $value = $Url.Trim().TrimEnd("/")
-    $value = $value -replace "/frp_info\.config$", ""
-    $value = $value -replace "/sync$", ""
-    if ($value -notmatch "^https?://") { $value = "https://$value" }
-    return "$value/sync"
-}
-
 function Select-FakeSni($Settings) {
     Write-Info "Chon domain hien trong ten link."
     Write-Host "   1) Free Tiktok  (api24-normal-alisg.tiktokv.com)"
-    Write-Host "   2) Free Vina Ko Nen  (vnpt.theworkpc.com)"
+    Write-Host "   2) Free Vina Ko Nen  (172.67.168.158)"
     Write-Host "   3) Ca hai (mac dinh)"
     Write-Host "   Hoac nhap gia tri tuy chinh. Enter = giu gia tri hien tai."
     $choice = Read-Host " Chon [1/2/3/tuy chinh]"
     switch ($choice) {
         "1" { $Settings["FAKE_SNI"] = "api24-normal-alisg.tiktokv.com#Free Tiktok" }
-        "2" { $Settings["FAKE_SNI"] = "vnpt.theworkpc.com#Free Vina Ko Nen" }
+        "2" { $Settings["FAKE_SNI"] = "172.67.168.158#Free Vina Ko Nen" }
         "3" { $Settings["FAKE_SNI"] = $Defaults["FAKE_SNI"] }
         "" { if ([string]::IsNullOrWhiteSpace($Settings["FAKE_SNI"])) { $Settings["FAKE_SNI"] = $Defaults["FAKE_SNI"] } }
         default { $Settings["FAKE_SNI"] = $choice.Trim() }
@@ -165,31 +149,6 @@ function Select-PortMode($Settings) {
         default { $Settings["PORT_MODE"] = "both" }
     }
     Write-Ok "Che do port: $($Settings['PORT_MODE'])"
-}
-
-function Configure-Subscription($Settings) {
-    Write-Info "Dong bo subscription nhieu may (tuy chon)."
-    Write-Host "      Enter de giu gia tri hien tai; nhap - de tat dong bo."
-    $current = Get-BaseHubUrl $Settings["SUBSCRIPTION_SYNC_URL"]
-    $answer = Read-Host " URL subscription [$current]"
-    if ($answer -eq "-") {
-        $Settings["SUBSCRIPTION_SYNC_URL"] = ""
-        $Settings["SUBSCRIPTION_SYNC_TOKEN"] = ""
-        $Settings["SUBSCRIPTION_NODE_ID"] = ""
-        Write-Info "Da tat dong bo subscription."
-        return
-    }
-    if (-not [string]::IsNullOrWhiteSpace($answer)) {
-        $Settings["SUBSCRIPTION_SYNC_URL"] = Normalize-HubUrl $answer
-    }
-    if (-not [string]::IsNullOrWhiteSpace($Settings["SUBSCRIPTION_SYNC_URL"])) {
-        $Settings["SUBSCRIPTION_NODE_ID"] = Read-Value " Node ID (duy nhat, vd vps-jp-1)" $Settings["SUBSCRIPTION_NODE_ID"]
-        $Settings["SUBSCRIPTION_SYNC_TOKEN"] = Read-Value " Hub sync token" $Settings["SUBSCRIPTION_SYNC_TOKEN"]
-        if ([string]::IsNullOrWhiteSpace($Settings["SUBSCRIPTION_NODE_ID"]) -or [string]::IsNullOrWhiteSpace($Settings["SUBSCRIPTION_SYNC_TOKEN"])) {
-            throw "Can Node ID va Hub sync token khi bat dong bo subscription."
-        }
-        Write-Ok "Subscription: $(Get-BaseHubUrl $Settings['SUBSCRIPTION_SYNC_URL'])"
-    }
 }
 
 function Configure-Country($Settings) {

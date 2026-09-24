@@ -26,7 +26,7 @@ def main():
     default_configs = {
         "PORT": "127.0.0.1:8888",
         "XRAY_UUID": str(uuid.uuid4()),
-        "FAKE_SNI": "api24-normal-alisg.tiktokv.com#Free Tiktok,vnpt.theworkpc.com#Free Vina Ko Nen",
+        "FAKE_SNI": "api24-normal-alisg.tiktokv.com#Free Tiktok,172.67.168.158#Free Vina Ko Nen",
         "WS_PATH": "/tiktok4g",
         "WS_HOST": "trycloudflare.com",
         "TRANSPORT": "websocket",
@@ -36,9 +36,6 @@ def main():
         "TUNNEL_TOKEN": "",
         "COUNTRY_CODE": "",
         "PORT_MODE": "both",
-        "SUBSCRIPTION_SYNC_URL": "",
-        "SUBSCRIPTION_SYNC_TOKEN": "",
-        "SUBSCRIPTION_NODE_ID": "",
         "RUN_MODE": "quick_tunnel"
     }
     START_TIME = int(time.time())
@@ -85,15 +82,6 @@ def main():
     RUN_MODE = get_os_env("RUN_MODE").strip().lower()
     COUNTRY_CODE = get_os_env("COUNTRY_CODE").strip().upper()
     PORT_MODE = get_os_env("PORT_MODE").strip().lower()
-    SUBSCRIPTION_SYNC_URL = get_os_env("SUBSCRIPTION_SYNC_URL").strip()
-    SUBSCRIPTION_SYNC_TOKEN = get_os_env("SUBSCRIPTION_SYNC_TOKEN").strip()
-    SUBSCRIPTION_NODE_ID = get_os_env("SUBSCRIPTION_NODE_ID").strip()
-    if SUBSCRIPTION_SYNC_URL:
-        SUBSCRIPTION_SYNC_URL = SUBSCRIPTION_SYNC_URL.rstrip("/")
-        for suffix in ("/frp_info.config", "/sync"):
-            if SUBSCRIPTION_SYNC_URL.endswith(suffix):
-                SUBSCRIPTION_SYNC_URL = SUBSCRIPTION_SYNC_URL[:-len(suffix)]
-        SUBSCRIPTION_SYNC_URL = f"{SUBSCRIPTION_SYNC_URL}/sync"
     if PORT_MODE not in ("80", "443", "both"):
         PORT_MODE = "both"
 
@@ -456,7 +444,7 @@ def main():
     # Friendly name map for known FAKE_SNI hostnames
     FRIENDLY_NAME_MAP = {
         "api24-normal-alisg.tiktokv.com": "Free Tiktok",
-        "vnpt.theworkpc.com": "Free Vina Ko Nen",
+        "172.67.168.158": "Free Vina Ko Nen",
     }
 
     def flag_emoji(cc):
@@ -506,17 +494,6 @@ def main():
         print("-" * 70)
         print("[OK] Links were also saved to: frp_info.config")
         print("[i] To view them again from another Termux session: cat ~/vless/frp_info.config")
-
-        if SUBSCRIPTION_SYNC_URL:
-            if not SUBSCRIPTION_SYNC_TOKEN or not SUBSCRIPTION_NODE_ID:
-                print("[!] Subscription sync skipped: URL requires token and node ID.")
-            else:
-                try:
-                    response = requests.post(SUBSCRIPTION_SYNC_URL, json={"node_id": SUBSCRIPTION_NODE_ID, "payloads": payloads}, headers={"Authorization": f"Bearer {SUBSCRIPTION_SYNC_TOKEN}"}, timeout=15)
-                    response.raise_for_status()
-                    print(f"[OK] Subscription synced: node {SUBSCRIPTION_NODE_ID}")
-                except requests.RequestException as error:
-                    print(f"[!] Subscription sync failed (server still running): {error}")
 
         frp_info = {"payloads": payloads, "ip": get_public_url(), "wshost": tunnel_host, "wspath": ws_path, "transport": TRANSPORT, "xhttp_mode": XHTTP_MODE if "xhttp" in TRANSPORTS else None, "start_time": START_TIME}
         send_webhook(frp_info)

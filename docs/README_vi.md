@@ -30,8 +30,6 @@ cd xray_vless_ws_server
 .\run-windows.bat
 ```
 
-Muốn gộp link của nhiều VPS vào một subscription? Xem [hướng dẫn Multi-VPS](MULTI_VPS_SUBSCRIPTION.md).
-
 Chạy CloudFront cổng 80 không TLS? Xem [CloudFront cổng 80 (không TLS): cấu hình, chi phí và giới hạn](CLOUDFRONT_NO_TLS_vi.md).
 
 Chọn một chế độ:
@@ -91,7 +89,7 @@ Không tải hay chạy `cloudflared`. Cloudflare edge kết thúc TLS và chuy�
 RUN_MODE=quick_tunnel
 PORT=127.0.0.1:8888
 XRAY_UUID=
-FAKE_SNI=api24-normal-alisg.tiktokv.com#Free Tiktok,vnpt.theworkpc.com#Free Vina Ko Nen
+FAKE_SNI=api24-normal-alisg.tiktokv.com#Free Tiktok,172.67.168.158#Free Vina Ko Nen
 WS_PATH=/tiktok4g
 WS_HOST=trycloudflare.com
 TRANSPORT=websocket

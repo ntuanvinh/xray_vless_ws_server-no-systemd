@@ -31,8 +31,6 @@ cd xray_vless_ws_server
 .\run-windows.bat
 ```
 
-Need one subscription URL for links from multiple VPS nodes? See [Multi-VPS subscription setup](MULTI_VPS_SUBSCRIPTION.md).
-
 Running CloudFront on port 80 without TLS? See [CloudFront port 80 (no TLS): setup, cost and limits](CLOUDFRONT_NO_TLS.md).
 
 Pick a mode:
@@ -92,7 +90,7 @@ No `cloudflared` is downloaded or run. Cloudflare's edge terminates TLS and forw
 RUN_MODE=quick_tunnel
 PORT=127.0.0.1:8888
 XRAY_UUID=
-FAKE_SNI=api24-normal-alisg.tiktokv.com#Free Tiktok,vnpt.theworkpc.com#Free Vina Ko Nen
+FAKE_SNI=api24-normal-alisg.tiktokv.com#Free Tiktok,172.67.168.158#Free Vina Ko Nen
 WS_PATH=/tiktok4g
 WS_HOST=trycloudflare.com
 TRANSPORT=websocket

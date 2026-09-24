@@ -16,13 +16,13 @@ SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 DEF_PORT_QUICK="127.0.0.1:8888"
 DEF_PORT_NAMED="127.0.0.1:8888"
 DEF_PORT_DIRECT="0.0.0.0:80"
-DEF_FAKE_SNI="api24-normal-alisg.tiktokv.com#Free Tiktok,vnpt.theworkpc.com#Free Vina Ko Nen"
+DEF_FAKE_SNI="api24-normal-alisg.tiktokv.com#Free Tiktok,172.67.168.158#Free Vina Ko Nen"
 DEF_WS_PATH="/tiktok4g"
 DEF_WS_HOST="trycloudflare.com"
 DEF_TRANSPORT="websocket"
 DEF_XHTTP_MODE="packet-up"
 
-RUN_MODE=""; PORT=""; UUID=""; FAKE_SNI=""; WS_PATH=""; WS_HOST=""; TUNNEL_TOKEN=""; ENABLE_WARP="false"; WEBHOOK_URL=""; TRANSPORT="websocket"; XHTTP_MODE="packet-up"; COUNTRY_CODE=""; CUSTOM_DOMAIN=""; PORT_MODE=""; SUBSCRIPTION_SYNC_URL=""; SUBSCRIPTION_SYNC_TOKEN=""; SUBSCRIPTION_NODE_ID=""
+RUN_MODE=""; PORT=""; UUID=""; FAKE_SNI=""; WS_PATH=""; WS_HOST=""; TUNNEL_TOKEN=""; ENABLE_WARP="false"; WEBHOOK_URL=""; TRANSPORT="websocket"; XHTTP_MODE="packet-up"; COUNTRY_CODE=""; CUSTOM_DOMAIN=""; PORT_MODE=""
 
 header(){ echo; echo -e "${CYAN}===================================================${NC}"; echo -e "${GREEN} $1${NC}"; echo -e "${CYAN}===================================================${NC}"; }
 ok(){ echo -e " ${GREEN}[OK]${NC} $1"; }
@@ -54,13 +54,13 @@ ask_fake_sni(){
     echo
     echo -e " ${BLUE}[i]${NC}  FAKE_SNI selection:"
     echo "   1) Free Tiktok  (api24-normal-alisg.tiktokv.com)"
-    echo "   2) Free Vina Ko Nen  (vnpt.theworkpc.com)"
+    echo "   2) Free Vina Ko Nen  (172.67.168.158)"
     echo "   3) Ca hai (mac dinh)"
     echo "   Hoac nhap gia tri FAKE_SNI tuy chinh"
     read -r -p " Chon [1/2/3/tuy chinh]: " choice
     case "$choice" in
         1) FAKE_SNI="api24-normal-alisg.tiktokv.com#Free Tiktok" ;;
-        2) FAKE_SNI="vnpt.theworkpc.com#Free Vina Ko Nen" ;;
+        2) FAKE_SNI="172.67.168.158#Free Vina Ko Nen" ;;
         3|"") FAKE_SNI="$DEF_FAKE_SNI" ;;
         *) FAKE_SNI="$choice" ;;
     esac
@@ -121,50 +121,6 @@ ask_port_mode(){
     esac
     ok "Che do port: $PORT_MODE"
 }
-# Retained for optional Subscription Hub support. Setup modes do not call it.
-normalize_hub_url(){
-    local value="$1"
-    value="${value%/}"
-    value="${value%/frp_info.config}"
-    value="${value%/sync}"
-    case "$value" in
-        http://*|https://*) ;;
-        *) value="https://$value" ;;
-    esac
-    printf '%s/sync' "$value"
-}
-
-ask_subscription_sync(){
-    local subscription_url endpoint
-    echo
-    echo -e " ${BLUE}[i]${NC}  Dong bo subscription nhieu VPS (tuy chon)"
-    echo "      Enter de giu gia tri hien tai; nhap - de tat dong bo."
-    echo "      Vi du: https://vless5gtiktok.takeshi.dev"
-    read -r -p " URL subscription [${SUBSCRIPTION_SYNC_URL%/sync}]: " subscription_url
-    if [ "$subscription_url" = "-" ]; then
-        SUBSCRIPTION_SYNC_URL=""
-        SUBSCRIPTION_SYNC_TOKEN=""
-        SUBSCRIPTION_NODE_ID=""
-        info "Da tat dong bo subscription cho VPS nay."
-    elif [ -n "$subscription_url" ] || [ -n "$SUBSCRIPTION_SYNC_URL" ]; then
-        if [ -n "$subscription_url" ]; then
-            endpoint="$(normalize_hub_url "$subscription_url")"
-            case "$endpoint" in
-                https://*/sync|http://*/sync) SUBSCRIPTION_SYNC_URL="$endpoint" ;;
-                *) err "URL subscription khong hop le."; return 1 ;;
-            esac
-        fi
-        SUBSCRIPTION_NODE_ID="$(ask_val "Node ID (duy nhat: vps-jp-1)" "${SUBSCRIPTION_NODE_ID:-}")"
-        SUBSCRIPTION_SYNC_TOKEN="$(ask_val "Hub sync token" "${SUBSCRIPTION_SYNC_TOKEN:-}")"
-        [ -z "$SUBSCRIPTION_NODE_ID" ] && { err "Can Node ID khi bat dong bo."; return 1; }
-        [ -z "$SUBSCRIPTION_SYNC_TOKEN" ] && { err "Can Hub token khi bat dong bo."; return 1; }
-        ok "Subscription: ${SUBSCRIPTION_SYNC_URL%/sync}"
-        ok "VPS nay se dong bo voi Node ID: $SUBSCRIPTION_NODE_ID"
-    else
-        info "Da tat dong bo subscription cho VPS nay."
-    fi
-}
-
 env_get(){ grep -E "^$1=" .env 2>/dev/null | head -n1 | cut -d= -f2-; }
 
 run_as_root(){
@@ -311,7 +267,6 @@ write_env(){
         echo "COUNTRY_CODE=$COUNTRY_CODE"
         echo "CUSTOM_DOMAIN=$CUSTOM_DOMAIN"
         echo "PORT_MODE=$PORT_MODE"
-        echo "SUBSCRIPTION_SYNC_URL=$SUBSCRIPTION_SYNC_URL"; echo "SUBSCRIPTION_SYNC_TOKEN=$SUBSCRIPTION_SYNC_TOKEN"; echo "SUBSCRIPTION_NODE_ID=$SUBSCRIPTION_NODE_ID"
     } > .env
     ok "Da ghi .env (RUN_MODE=$RUN_MODE)"
 }
@@ -326,7 +281,6 @@ load_existing(){
     COUNTRY_CODE="$(env_get COUNTRY_CODE)"
     CUSTOM_DOMAIN="$(env_get CUSTOM_DOMAIN)"
     PORT_MODE="$(env_get PORT_MODE)"
-    SUBSCRIPTION_SYNC_URL="$(env_get SUBSCRIPTION_SYNC_URL)"; SUBSCRIPTION_SYNC_TOKEN="$(env_get SUBSCRIPTION_SYNC_TOKEN)"; SUBSCRIPTION_NODE_ID="$(env_get SUBSCRIPTION_NODE_ID)"
 }
 
 # ==================== Systemd ====================
