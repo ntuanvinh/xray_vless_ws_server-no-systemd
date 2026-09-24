@@ -267,6 +267,8 @@ prepare_python(){
 
 # ==================== .env ====================
 write_env(){
+    UUID="${UUID:-$(uuid_gen)}"
+    [ -n "$UUID" ] || { err "Khong tao duoc VLESS UUID."; return 1; }
     {
         echo "RUN_MODE=$RUN_MODE"; echo "PORT=$PORT"; echo "XRAY_UUID=$UUID"
         echo "FAKE_SNI=$FAKE_SNI"; echo "WS_PATH=$WS_PATH"; echo "WS_HOST=$WS_HOST"
@@ -388,13 +390,10 @@ quick_mode(){
     info "Khong can domain. Cloudflare cap hostname ngau nhien sau moi lan chay."
     load_existing
 
-    setup_step "1/5" "Dinh danh server"
-    UUID="$(ask_val "VLESS UUID" "${UUID:-$(uuid_gen)}")"
-
-    setup_step "2/5" "Fake SNI"
+    setup_step "1/4" "Fake SNI"
     ask_fake_sni
 
-    setup_step "3/5" "Port link VLESS"
+    setup_step "2/4" "Port link VLESS"
     WS_PATH="$DEF_WS_PATH"
     quick_tunnel_transport
     RUN_MODE="quick_tunnel"; PORT="$DEF_PORT_QUICK"
@@ -402,11 +401,11 @@ quick_mode(){
     WS_HOST="$DEF_WS_HOST"
     ask_port_mode
 
-    setup_step "4/5" "Vi tri node"
+    setup_step "3/4" "Vi tri node"
     ask_country
 
-    setup_step "5/5" "Luu va khoi dong"
-    write_env
+    setup_step "4/4" "Luu va khoi dong"
+    write_env || return 1
     start_server
 }
 
@@ -428,7 +427,7 @@ named_mode(){
     TUNNEL_TOKEN="$(ask_val "Tunnel connector token" "${TUNNEL_TOKEN:-}")"
     [ -z "$WS_HOST" ] || [ "$WS_HOST" = "trycloudflare.com" ] && { err "Can domain."; return 1; }
     [ -z "$TUNNEL_TOKEN" ] && { err "Can token."; return 1; }
-    RUN_MODE="named_tunnel"; PORT="$DEF_PORT_NAMED"; UUID="${UUID:-$(uuid_gen)}"
+    RUN_MODE="named_tunnel"; PORT="$DEF_PORT_NAMED"
 
     setup_step "2/6" "Fake SNI"
     ask_fake_sni
@@ -445,7 +444,7 @@ named_mode(){
 
     setup_step "6/6" "Luu va khoi dong"
     CUSTOM_DOMAIN="$WS_HOST"
-    write_env
+    write_env || return 1
     start_server
 }
 
@@ -467,7 +466,7 @@ direct_mode(){
     WS_HOST="$(ask_val "Domain" "$def_host")"
     PORT="$(ask_val "Origin listen address:port" "$DEF_PORT_DIRECT")"
     [ -z "$WS_HOST" ] || [ "$WS_HOST" = "trycloudflare.com" ] && { err "Can domain."; return 1; }
-    RUN_MODE="direct"; UUID="${UUID:-$(uuid_gen)}"
+    RUN_MODE="direct"
 
     setup_step "2/6" "Fake SNI"
     ask_fake_sni
@@ -484,7 +483,7 @@ direct_mode(){
 
     setup_step "6/6" "Luu va khoi dong"
     CUSTOM_DOMAIN="$WS_HOST"
-    write_env
+    write_env || return 1
     start_server
 }
 # ==================== Quan ly Service ====================

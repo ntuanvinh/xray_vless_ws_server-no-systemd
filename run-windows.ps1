@@ -75,6 +75,9 @@ function Read-EnvFile {
 
 function Write-EnvFile($Settings) {
     $Settings["WS_PATH"] = "/vless"
+    if ([string]::IsNullOrWhiteSpace($Settings["XRAY_UUID"])) {
+        $Settings["XRAY_UUID"] = [guid]::NewGuid().ToString()
+    }
     $lines = foreach ($key in $EnvKeys) {
         "$key=$($Settings[$key])"
     }
@@ -225,21 +228,18 @@ function Configure-QuickTunnel {
     $settings["TUNNEL_TOKEN"] = ""
     $settings["TRANSPORT"] = "websocket"
 
-    Write-Step "1/5" "Dinh danh server"
-    $settings["XRAY_UUID"] = Read-Value " VLESS UUID" $(if ($settings["XRAY_UUID"]) { $settings["XRAY_UUID"] } else { [guid]::NewGuid().ToString() })
-
-    Write-Step "2/5" "Fake SNI"
+    Write-Step "1/4" "Fake SNI"
     Select-FakeSni $settings
 
-    Write-Step "3/5" "Port link VLESS"
+    Write-Step "2/4" "Port link VLESS"
     $settings["WS_PATH"] = "/vless"
     Write-Ok "Transport: WebSocket"
     Select-PortMode $settings
 
-    Write-Step "4/5" "Vi tri node"
+    Write-Step "3/4" "Vi tri node"
     Configure-Country $settings
 
-    Write-Step "5/5" "Luu va khoi dong"
+    Write-Step "4/4" "Luu va khoi dong"
     Start-Server $settings
 }
 
@@ -258,7 +258,6 @@ function Configure-NamedTunnel {
     $settings["RUN_MODE"] = "named_tunnel"
     $settings["PORT"] = "127.0.0.1:8888"
     $settings["CUSTOM_DOMAIN"] = $settings["WS_HOST"]
-    $settings["XRAY_UUID"] = Read-Value " VLESS UUID" $(if ($settings["XRAY_UUID"]) { $settings["XRAY_UUID"] } else { [guid]::NewGuid().ToString() })
 
     Write-Step "2/6" "Fake SNI"
     Select-FakeSni $settings
@@ -291,7 +290,6 @@ function Configure-Direct {
     $settings["RUN_MODE"] = "direct"
     $settings["TUNNEL_TOKEN"] = ""
     $settings["CUSTOM_DOMAIN"] = $settings["WS_HOST"]
-    $settings["XRAY_UUID"] = Read-Value " VLESS UUID" $(if ($settings["XRAY_UUID"]) { $settings["XRAY_UUID"] } else { [guid]::NewGuid().ToString() })
 
     Write-Step "2/6" "Fake SNI"
     Select-FakeSni $settings
