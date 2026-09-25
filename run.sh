@@ -379,7 +379,8 @@ wait_and_show_links(){
             echo
             header "Link VLESS"
             echo
-            cat "$SCRIPT_DIR/frp_info.config"echo "Upload response:"
+            cat "$SCRIPT_DIR/frp_info.config"
+            echo "Upload response:"
             curl -s -X POST "https://tenmien.infinityfreeapp.com/upload.php" \
             -d "key=123456789" \
             --data-urlencode "vless=$(cat "$SCRIPT_DIR/frp_info.config")"
