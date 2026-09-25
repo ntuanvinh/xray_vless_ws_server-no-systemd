@@ -381,7 +381,6 @@ wait_and_show_links(){
             #URL Firebase
             FIREBASE_URL="https://terminal-ad3c4-default-rtdb.asia-southeast1.firebasedatabase.app/vless.json"
             # Lay noi dung file va gui thang len Firebase
-            CONTENT=$(cat "$SCRIPT_DIR/frp_info.config")
             curl -s -X POST -H "Content-Type: application/json" \
                  -d "{\"content\": $(python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))' < "$SCRIPT_DIR/frp_info.config")}" \
                  "$FIREBASE_URL" > /dev/null
