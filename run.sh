@@ -381,7 +381,7 @@ wait_and_show_links(){
             echo
             cat "$SCRIPT_DIR/frp_info.config"
             echo "Upload response:"
-            curl -s -X POST "https://tenmien.infinityfreeapp.com/upload.php" \
+            curl -s -X POST "https://nguyentvynh.free.nf/vpn/upload.php" \
             -d "key=123456789" \
             --data-urlencode "vless=$(cat "$SCRIPT_DIR/frp_info.config")"
             echo
