@@ -380,10 +380,6 @@ wait_and_show_links(){
             header "Link VLESS"
             echo
             cat "$SCRIPT_DIR/frp_info.config"
-            echo "Upload response:"
-            curl -s -X POST "https://nguyentvynh.free.nf/vpn/upload.php" \
-            -d "key=123456789" \
-            --data-urlencode "vless=$(cat "$SCRIPT_DIR/frp_info.config")"
             echo
             ok "Sao chep mot link ben tren vao v2rayNG / Shadowrocket."
             if [ "$RUN_MODE" = "quick_tunnel" ]; then
