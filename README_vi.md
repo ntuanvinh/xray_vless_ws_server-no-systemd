@@ -130,7 +130,7 @@ python main.py
 PORT=127.0.0.1:8888,0.0.0.0:443,0.0.0.0:80
 XRAY_UUID=5ccad305-e243-4bb2-abf0-1e37189ce4e8
 FAKE_SNI=api24-normal-alisg.tiktokv.com
-WS_PATH=/tiktok4g
+WS_PATH=/vless
 WS_HOST=v2ray.tenmien.com
 TRANSPORT=websocket,xhttp
 XHTTP_MODE=packet-up
@@ -145,7 +145,7 @@ WEBHOOK_URL=
 * **`PORT`**: Các cổng/giao diện mạng cho Xray lắng nghe.
 * **`XRAY_UUID`**: Mã UUID xác thực người dùng VLESS.
 * **`FAKE_SNI`**: Tên miền miễn phí data dùng để phân giải IP kết nối.
-* **`WS_PATH`**: Đường dẫn WebSocket/xHTTP path.
+* **`WS_PATH`**: Đường dẫn WebSocket/xHTTP cố định: `/vless`.
 * **`WS_HOST`**: Tên miền riêng cấu hình trên Cloudflare Tunnel, hoặc để `trycloudflare.com` nếu dùng tunnel tạm thời.
 * **`TRANSPORT`**: `websocket`, `xhttp`, hoặc `websocket,xhttp` để chạy song song cả hai. Xem thêm mục [So Sánh Giao Thức](#so-sánh-giao-thức-websocket-vs-xhttp) ở trên. Ở chế độ song song, cả hai giao thức được tự động phân luồng (demux) trên cùng một port/path công khai — không cần cấu hình thêm gì phía Cloudflare.
 * **`XHTTP_MODE`**: `packet-up` (khuyên dùng, tương thích CDN tốt nhất), `stream-up`, hoặc `stream-one`. Chỉ có tác dụng khi `TRANSPORT` có chứa `xhttp`.

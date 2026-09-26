@@ -111,7 +111,7 @@ export default {
     const isWebSocketUpgrade = request.headers.get("Upgrade") === "websocket";
 
     // XHTTP clients append a per-session sub-path after the configured path
-    // (e.g. "/tiktok4g/<sessionId>"), so match on prefix rather than exact
+    // (e.g. "/vless/<sessionId>"), so match on prefix rather than exact
     // equality. WebSocket still requires an exact match since it has no
     // sub-path concept.
     const exactMatch = url.pathname === entryPath;

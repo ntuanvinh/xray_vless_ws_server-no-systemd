@@ -132,7 +132,7 @@ python main.py
 PORT=127.0.0.1:8888,0.0.0.0:443,0.0.0.0:80
 XRAY_UUID=5ccad305-e243-4bb2-abf0-1e37189ce4e8
 FAKE_SNI=api24-normal-alisg.tiktokv.com
-WS_PATH=/tiktok4g
+WS_PATH=/vless
 WS_HOST=v2ray.yourdomain.com
 TRANSPORT=WebSocket,xhttp
 XHTTP_MODE=packet-up
@@ -147,7 +147,7 @@ WEBHOOK_URL=
 * **`PORT`**: Comma-separated list of inbound ports/interfaces for Xray.
 * **`XRAY_UUID`**: UUID string used for VLESS client authentication.
 * **`FAKE_SNI`**: Zero-rated domain used by clients for DNS/IP resolution (e.g., TikTok CDN domain).
-* **`WS_PATH`**: WebSocket/xHTTP path endpoint.
+* **`WS_PATH`**: Fixed WebSocket/xHTTP path: `/vless`.
 * **`WS_HOST`**: Custom domain for your Named Tunnel, or `trycloudflare.com` for quick temporary tunnels.
 * **`TRANSPORT`**: `websocket`, `xhttp`, or `websocket,xhttp` to run both at once. See [Transport Comparison](#transport-comparison-websocket-vs-xhttp) above. Dual mode transparently demuxes both transports over the same public port/path — no extra Cloudflare configuration needed.
 * **`XHTTP_MODE`**: `packet-up` (recommended, most CDN-compatible), `stream-up`, or `stream-one`. Only used when `TRANSPORT` includes `xhttp`.

@@ -30,7 +30,7 @@ cd xray_vless_ws_server
 .\run-windows.bat
 ```
 
-Muốn gộp link của nhiều VPS vào một subscription? Xem [hướng dẫn Multi-VPS](MULTI_VPS_SUBSCRIPTION.md).
+Chạy CloudFront cổng 80 không TLS? Xem [CloudFront cổng 80 (không TLS): cấu hình, chi phí và giới hạn](CLOUDFRONT_NO_TLS_vi.md).
 
 Chọn một chế độ:
 
@@ -89,15 +89,15 @@ Không tải hay chạy `cloudflared`. Cloudflare edge kết thúc TLS và chuy�
 RUN_MODE=quick_tunnel
 PORT=127.0.0.1:8888
 XRAY_UUID=
-FAKE_SNI=api24-normal-alisg.tiktokv.com#Free Tiktok,vnpt.theworkpc.com#Free Vina Ko Nen
-WS_PATH=/tiktok4g
+FAKE_SNI=api24-normal-alisg.tiktokv.com#FreeTiktok,172.67.168.158#FreeVina Ko Nen
+WS_PATH=/vless
 WS_HOST=trycloudflare.com
 TRANSPORT=websocket
 ENABLE_WARP=false
 WEBHOOK_URL=
 TUNNEL_TOKEN=
 COUNTRY_CODE=
-PORT_MODE=both
+PORT_MODE=443
 ```
 
 | Khóa | Ý nghĩa |
@@ -106,14 +106,14 @@ PORT_MODE=both
 | `PORT` | Danh sách địa chỉ/cổng inbound của Xray, cách nhau bằng dấu phẩy |
 | `XRAY_UUID` | UUID xác thực client VLESS (tự sinh nếu để trống) |
 | `FAKE_SNI` | Danh sách domain kèm `#tên` tùy chọn để đặt tên link |
-| `WS_PATH` | Đường dẫn WebSocket |
+| `WS_PATH` | Đường dẫn WebSocket/xHTTP cố định: `/vless` |
 | `WS_HOST` | Domain riêng cho Named/Direct, hoặc `trycloudflare.com` cho Quick |
-| `TRANSPORT` | `websocket` (hiện là giá trị duy nhất được hỗ trợ) |
+| `TRANSPORT` | Quick Tunnel dùng `websocket`; setup Mode 2/3 mặc định `websocket,xhttp` |
 | `ENABLE_WARP` | `true` để định tuyến outbound qua Cloudflare WARP |
 | `WEBHOOK_URL` | Endpoint tùy chọn để nhận payload kết nối |
 | `TUNNEL_TOKEN` | Connector token chỉ dùng cho chế độ Named Tunnel |
 | `COUNTRY_CODE` | Mã quốc gia 2 ký tự (VD: `VN`, `JP`) để thêm cờ vào tên link |
-| `PORT_MODE` | Lọc link xuất ra: `both` (mặc định), chỉ `80`, hoặc chỉ `443` |
+| `PORT_MODE` | Lọc link xuất ra: `443` (mặc định), `80`, hoặc `both` |
 
 ## Chạy trên VPS
 

@@ -10,20 +10,17 @@ $Defaults = [ordered]@{
     RUN_MODE = "quick_tunnel"
     PORT = "127.0.0.1:8888"
     XRAY_UUID = ""
-    FAKE_SNI = "api24-normal-alisg.tiktokv.com#Free Tiktok,vnpt.theworkpc.com#Free Vina Ko Nen"
-    WS_PATH = "/tiktok4g"
+    FAKE_SNI = "api24-normal-alisg.tiktokv.com#FreeTiktok,172.67.168.158#FreeVina Ko Nen"
+    WS_PATH = "/vless"
     WS_HOST = "trycloudflare.com"
-    TRANSPORT = "websocket"
+    TRANSPORT = "websocket,xhttp"
     XHTTP_MODE = "packet-up"
     ENABLE_WARP = "false"
     WEBHOOK_URL = ""
     TUNNEL_TOKEN = ""
     COUNTRY_CODE = ""
     CUSTOM_DOMAIN = ""
-    PORT_MODE = "both"
-    SUBSCRIPTION_SYNC_URL = ""
-    SUBSCRIPTION_SYNC_TOKEN = ""
-    SUBSCRIPTION_NODE_ID = ""
+    PORT_MODE = "443"
 }
 $EnvKeys = @($Defaults.Keys)
 $EnvPath = Join-Path $ProjectRoot ".env"
@@ -43,9 +40,9 @@ function Write-Err([string]$Message) { Write-Host " [ERR] $Message" -ForegroundC
 
 function Write-Step([string]$Number, [string]$Title) {
     Write-Host ""
-    Write-Host " [$Number] " -NoNewline -ForegroundColor Cyan
-    Write-Host $Title -ForegroundColor Green
-    Write-Host " -------------------------------------------------" -ForegroundColor DarkGray
+    Write-Host "===================================================" -ForegroundColor Cyan
+    Write-Host " BUOC $Number  $Title" -ForegroundColor Green
+    Write-Host "===================================================" -ForegroundColor Cyan
 }
 
 function Read-Value([string]$Prompt, [string]$Default) {
@@ -77,6 +74,10 @@ function Read-EnvFile {
 }
 
 function Write-EnvFile($Settings) {
+    $Settings["WS_PATH"] = "/vless"
+    if ([string]::IsNullOrWhiteSpace($Settings["XRAY_UUID"])) {
+        $Settings["XRAY_UUID"] = [guid]::NewGuid().ToString()
+    }
     $lines = foreach ($key in $EnvKeys) {
         "$key=$($Settings[$key])"
     }
@@ -86,31 +87,28 @@ function Write-EnvFile($Settings) {
     Write-Ok "Da ghi .env (RUN_MODE=$($Settings['RUN_MODE']))"
 }
 
-# Retained for optional Subscription Hub support. Setup modes do not call it.
-function Get-BaseHubUrl([string]$Url) {
-    return $Url -replace "/sync$", ""
-}
-
-function Normalize-HubUrl([string]$Url) {
-    $value = $Url.Trim().TrimEnd("/")
-    $value = $value -replace "/frp_info\.config$", ""
-    $value = $value -replace "/sync$", ""
-    if ($value -notmatch "^https?://") { $value = "https://$value" }
-    return "$value/sync"
-}
-
 function Select-FakeSni($Settings) {
+    $default = switch ($Settings["FAKE_SNI"]) {
+        "api24-normal-alisg.tiktokv.com#FreeTiktok" { "1" }
+        "api24-normal-alisg.tiktokv.com#Free Tiktok" { "1" }
+        "172.67.168.158#FreeVina Ko Nen" { "2" }
+        "172.67.168.158#Free Vina Ko Nen" { "2" }
+        $Defaults["FAKE_SNI"] { "3" }
+        "api24-normal-alisg.tiktokv.com#Free Tiktok,172.67.168.158#Free Vina Ko Nen" { "3" }
+        "" { "3" }
+        default { "tuy chinh" }
+    }
     Write-Info "Chon domain hien trong ten link."
-    Write-Host "   1) Free Tiktok  (api24-normal-alisg.tiktokv.com)"
-    Write-Host "   2) Free Vina Ko Nen  (vnpt.theworkpc.com)"
-    Write-Host "   3) Ca hai (mac dinh)"
-    Write-Host "   Hoac nhap gia tri tuy chinh. Enter = giu gia tri hien tai."
-    $choice = Read-Host " Chon [1/2/3/tuy chinh]"
+    Write-Host "   1. FreeTiktok  (api24-normal-alisg.tiktokv.com)"
+    Write-Host "   2. FreeVina Ko Nen  (172.67.168.158)"
+    Write-Host "   3. Ca hai (mac dinh)"
+    Write-Host "   Hoac nhap gia tri tuy chinh."
+    $choice = Read-Value " Chon [1/2/3/tuy chinh]" $default
     switch ($choice) {
-        "1" { $Settings["FAKE_SNI"] = "api24-normal-alisg.tiktokv.com#Free Tiktok" }
-        "2" { $Settings["FAKE_SNI"] = "vnpt.theworkpc.com#Free Vina Ko Nen" }
+        "1" { $Settings["FAKE_SNI"] = "api24-normal-alisg.tiktokv.com#FreeTiktok" }
+        "2" { $Settings["FAKE_SNI"] = "172.67.168.158#FreeVina Ko Nen" }
         "3" { $Settings["FAKE_SNI"] = $Defaults["FAKE_SNI"] }
-        "" { if ([string]::IsNullOrWhiteSpace($Settings["FAKE_SNI"])) { $Settings["FAKE_SNI"] = $Defaults["FAKE_SNI"] } }
+        "tuy chinh" { }
         default { $Settings["FAKE_SNI"] = $choice.Trim() }
     }
     Write-Ok "FAKE_SNI: $($Settings['FAKE_SNI'])"
@@ -118,15 +116,16 @@ function Select-FakeSni($Settings) {
 
 function Select-Transport($Settings) {
     $default = switch ($Settings["TRANSPORT"]) {
+        "websocket" { "1" }
         "xhttp" { "2" }
         "websocket,xhttp" { "3" }
         "xhttp,websocket" { "3" }
-        default { "1" }
+        default { "3" }
     }
     Write-Info "Chon transport cho link VLESS."
-    Write-Host "   1) WebSocket"
-    Write-Host "   2) xHTTP"
-    Write-Host "   3) Ca WebSocket + xHTTP"
+    Write-Host "   1. WebSocket"
+    Write-Host "   2. xHTTP"
+    Write-Host "   3. Ca WebSocket + xHTTP"
     $choice = Read-Value " Chon [1/2/3]" $default
     switch ($choice) {
         "1" { $Settings["TRANSPORT"] = "websocket" }
@@ -141,7 +140,10 @@ function Select-Transport($Settings) {
             "stream-one" { "3" }
             default { "1" }
         }
-        Write-Host "   xHTTP mode: 1) packet-up  2) stream-up  3) stream-one"
+        Write-Host "   xHTTP mode:"
+        Write-Host "   1. packet-up"
+        Write-Host "   2. stream-up"
+        Write-Host "   3. stream-one"
         $mode = Read-Value " Chon xHTTP mode [1/2/3]" $modeDefault
         switch ($mode) {
             "1" { $Settings["XHTTP_MODE"] = "packet-up" }
@@ -155,41 +157,17 @@ function Select-Transport($Settings) {
 
 function Select-PortMode($Settings) {
     Write-Info "Chon cac link se duoc xuat ra."
-    Write-Host "   1) Chi port 80 (KHONG TLS)"
-    Write-Host "   2) Chi port 443 (TLS)"
-    Write-Host "   3) Ca 80 + 443 (mac dinh)"
-    $choice = Read-Host " Chon [1/2/3]"
+    Write-Host "   1. Chi port 80 (KHONG TLS)"
+    Write-Host "   2. Chi port 443 (TLS, mac dinh)"
+    Write-Host "   3. Ca 80 + 443"
+    $choice = Read-Value " Chon [1/2/3]" "2"
     switch ($choice) {
         "1" { $Settings["PORT_MODE"] = "80" }
         "2" { $Settings["PORT_MODE"] = "443" }
-        default { $Settings["PORT_MODE"] = "both" }
+        "3" { $Settings["PORT_MODE"] = "both" }
+        default { Write-Warn "Lua chon khong hop le, giu lai $($Settings['PORT_MODE'])." }
     }
     Write-Ok "Che do port: $($Settings['PORT_MODE'])"
-}
-
-function Configure-Subscription($Settings) {
-    Write-Info "Dong bo subscription nhieu may (tuy chon)."
-    Write-Host "      Enter de giu gia tri hien tai; nhap - de tat dong bo."
-    $current = Get-BaseHubUrl $Settings["SUBSCRIPTION_SYNC_URL"]
-    $answer = Read-Host " URL subscription [$current]"
-    if ($answer -eq "-") {
-        $Settings["SUBSCRIPTION_SYNC_URL"] = ""
-        $Settings["SUBSCRIPTION_SYNC_TOKEN"] = ""
-        $Settings["SUBSCRIPTION_NODE_ID"] = ""
-        Write-Info "Da tat dong bo subscription."
-        return
-    }
-    if (-not [string]::IsNullOrWhiteSpace($answer)) {
-        $Settings["SUBSCRIPTION_SYNC_URL"] = Normalize-HubUrl $answer
-    }
-    if (-not [string]::IsNullOrWhiteSpace($Settings["SUBSCRIPTION_SYNC_URL"])) {
-        $Settings["SUBSCRIPTION_NODE_ID"] = Read-Value " Node ID (duy nhat, vd vps-jp-1)" $Settings["SUBSCRIPTION_NODE_ID"]
-        $Settings["SUBSCRIPTION_SYNC_TOKEN"] = Read-Value " Hub sync token" $Settings["SUBSCRIPTION_SYNC_TOKEN"]
-        if ([string]::IsNullOrWhiteSpace($Settings["SUBSCRIPTION_NODE_ID"]) -or [string]::IsNullOrWhiteSpace($Settings["SUBSCRIPTION_SYNC_TOKEN"])) {
-            throw "Can Node ID va Hub sync token khi bat dong bo subscription."
-        }
-        Write-Ok "Subscription: $(Get-BaseHubUrl $Settings['SUBSCRIPTION_SYNC_URL'])"
-    }
 }
 
 function Configure-Country($Settings) {
@@ -241,7 +219,7 @@ function Start-Server($Settings) {
 }
 
 function Configure-QuickTunnel {
-    Write-Header "1. Quick Tunnel (trycloudflare.com)"
+    Write-Header "Quick Tunnel"
     Write-Info "Khong can domain. Hostname thay doi moi lan khoi dong."
     $settings = Read-EnvFile
     $settings["RUN_MODE"] = "quick_tunnel"
@@ -250,31 +228,26 @@ function Configure-QuickTunnel {
     $settings["TUNNEL_TOKEN"] = ""
     $settings["TRANSPORT"] = "websocket"
 
-    Write-Step "1/6" "Thong tin server"
-    $settings["XRAY_UUID"] = Read-Value " VLESS UUID" $(if ($settings["XRAY_UUID"]) { $settings["XRAY_UUID"] } else { [guid]::NewGuid().ToString() })
-
-    Write-Step "2/6" "Fake SNI"
+    Write-Step "1/4" "Fake SNI"
     Select-FakeSni $settings
 
-    Write-Step "3/6" "Duong dan WebSocket"
-    $settings["WS_PATH"] = Read-Value " Duong dan WebSocket" $settings["WS_PATH"]
-    if (-not $settings["WS_PATH"].StartsWith("/")) { $settings["WS_PATH"] = "/$($settings['WS_PATH'])" }
+    Write-Step "2/4" "Port link VLESS"
+    $settings["WS_PATH"] = "/vless"
     Write-Ok "Transport: WebSocket"
-
-    Write-Step "4/6" "Port link VLESS"
     Select-PortMode $settings
 
-    Write-Step "5/6" "Vi tri node"
+    Write-Step "3/4" "Vi tri node"
     Configure-Country $settings
 
-    Write-Step "6/6" "Luu va khoi dong"
+    Write-Step "4/4" "Luu va khoi dong"
     Start-Server $settings
 }
 
 function Configure-NamedTunnel {
-    Write-Header "2. Named Cloudflare Tunnel + domain rieng"
+    Write-Header "Named Cloudflare Tunnel"
     Write-Info "Trong Cloudflare Zero Trust, tao Public Hostname tro toi http://127.0.0.1:8888."
     $settings = Read-EnvFile
+    if ($settings["RUN_MODE"] -eq "quick_tunnel") { $settings["TRANSPORT"] = "websocket,xhttp" }
     $defaultHost = if ($settings["WS_HOST"] -eq "trycloudflare.com") { $settings["CUSTOM_DOMAIN"] } else { $settings["WS_HOST"] }
 
     Write-Step "1/6" "Domain va tunnel credentials"
@@ -285,13 +258,12 @@ function Configure-NamedTunnel {
     $settings["RUN_MODE"] = "named_tunnel"
     $settings["PORT"] = "127.0.0.1:8888"
     $settings["CUSTOM_DOMAIN"] = $settings["WS_HOST"]
-    $settings["XRAY_UUID"] = Read-Value " VLESS UUID" $(if ($settings["XRAY_UUID"]) { $settings["XRAY_UUID"] } else { [guid]::NewGuid().ToString() })
 
     Write-Step "2/6" "Fake SNI"
     Select-FakeSni $settings
 
     Write-Step "3/6" "Diem cuoi transport"
-    $settings["WS_PATH"] = Read-Value " Duong dan WebSocket" $settings["WS_PATH"]
+    $settings["WS_PATH"] = "/vless"
     Select-Transport $settings
 
     Write-Step "4/6" "Port link VLESS"
@@ -305,9 +277,10 @@ function Configure-NamedTunnel {
 }
 
 function Configure-Direct {
-    Write-Header "3. Direct Cloudflare proxied DNS -> Windows"
+    Write-Header "Direct Cloudflare"
     Write-Warn "Mode nay can quyen Administrator de bind port 80 va can mo Windows Firewall."
     $settings = Read-EnvFile
+    if ($settings["RUN_MODE"] -eq "quick_tunnel") { $settings["TRANSPORT"] = "websocket,xhttp" }
     $defaultHost = if ($settings["WS_HOST"] -eq "trycloudflare.com") { $settings["CUSTOM_DOMAIN"] } else { $settings["WS_HOST"] }
 
     Write-Step "1/6" "Domain va origin listener"
@@ -317,13 +290,12 @@ function Configure-Direct {
     $settings["RUN_MODE"] = "direct"
     $settings["TUNNEL_TOKEN"] = ""
     $settings["CUSTOM_DOMAIN"] = $settings["WS_HOST"]
-    $settings["XRAY_UUID"] = Read-Value " VLESS UUID" $(if ($settings["XRAY_UUID"]) { $settings["XRAY_UUID"] } else { [guid]::NewGuid().ToString() })
 
     Write-Step "2/6" "Fake SNI"
     Select-FakeSni $settings
 
     Write-Step "3/6" "Diem cuoi transport"
-    $settings["WS_PATH"] = Read-Value " Duong dan WebSocket" $settings["WS_PATH"]
+    $settings["WS_PATH"] = "/vless"
     Select-Transport $settings
 
     Write-Step "4/6" "Port link VLESS"
@@ -347,6 +319,30 @@ function Remove-RuntimeFiles {
     Write-Ok "Da xoa cac file runtime. Source code duoc giu nguyen."
 }
 
+function Manage-Server {
+    if (-not (Test-Path $EnvPath)) {
+        Write-Warn "Chua co cau hinh. Hay chay mot mode setup truoc."
+        return
+    }
+    while ($true) {
+        Write-Header "Quan ly Service"
+        Write-Info "Windows chay server truc tiep; nhan Ctrl+C de dung."
+        Write-Host " 1. Chay lai cau hinh da luu"
+        Write-Host " 2. Xem link VLESS"
+        Write-Host " 0. Quay lai"
+        switch ((Read-Host " Chon [0-2]").Trim()) {
+            "1" { Start-Server (Read-EnvFile) }
+            "2" {
+                $linksPath = Join-Path $ProjectRoot "frp_info.config"
+                if (Test-Path $linksPath) { Get-Content -LiteralPath $linksPath }
+                else { Write-Info "Chua co link. Hay khoi dong server truoc." }
+            }
+            "0" { return }
+            default { Write-Err "Lua chon khong hop le." }
+        }
+    }
+}
+
 try {
     :mainMenu while ($true) {
         Write-Header "May chu Xray VLESS-WS (Windows)"
@@ -355,22 +351,20 @@ try {
             $activeSettings = Read-EnvFile
             Write-Host "  Config: $($activeSettings['RUN_MODE']) -> $($activeSettings['WS_HOST'])" -ForegroundColor DarkGray
         }
-        Write-Host ""
-        Write-Host "  SETUP" -ForegroundColor Cyan
-        Write-Host " 1. Quick Tunnel (trycloudflare.com) - khong can domain"
-        Write-Host " 2. Named Cloudflare Tunnel + domain rieng"
-        Write-Host " 3. Direct Cloudflare proxied DNS -> Windows"
-        Write-Host ""
-        Write-Host "  UTILITIES" -ForegroundColor Cyan
-        Write-Host " 4. Go cai dat runtime"
-        Write-Host " 0. Thoat"
-        $choice = (Read-Host " Chon [0-4]").Trim()
+        Write-Host " 1. [1] Quick Tunnel - [tao ngay khong can domain]"
+        Write-Host " 2. [2] Named Cloudflare Tunnel - [can domain]"
+        Write-Host " 3. [3] Direct Cloudflare - [can domain + public port]"
+        Write-Host " 4. Quan ly Service"
+        Write-Host " 5. Go cai dat"
+        Write-Host " 6. Thoat"
+        $choice = (Read-Host " Chon [1-6]").Trim()
         switch ($choice) {
             "1" { Configure-QuickTunnel }
             "2" { Configure-NamedTunnel }
             "3" { Configure-Direct }
-            "4" { Remove-RuntimeFiles }
-            "0" { break mainMenu }
+            "4" { Manage-Server }
+            "5" { Remove-RuntimeFiles }
+            "6" { break mainMenu }
             default { Write-Err "Lua chon khong hop le." }
         }
         if (-not $NoPause) { [void](Read-Host " Press Enter de tiep tuc") }

@@ -31,7 +31,7 @@ cd xray_vless_ws_server
 .\run-windows.bat
 ```
 
-Need one subscription URL for links from multiple VPS nodes? See [Multi-VPS subscription setup](MULTI_VPS_SUBSCRIPTION.md).
+Running CloudFront on port 80 without TLS? See [CloudFront port 80 (no TLS): setup, cost and limits](CLOUDFRONT_NO_TLS.md).
 
 Pick a mode:
 
@@ -90,15 +90,15 @@ No `cloudflared` is downloaded or run. Cloudflare's edge terminates TLS and forw
 RUN_MODE=quick_tunnel
 PORT=127.0.0.1:8888
 XRAY_UUID=
-FAKE_SNI=api24-normal-alisg.tiktokv.com#Free Tiktok,vnpt.theworkpc.com#Free Vina Ko Nen
-WS_PATH=/tiktok4g
+FAKE_SNI=api24-normal-alisg.tiktokv.com#FreeTiktok,172.67.168.158#FreeVina Ko Nen
+WS_PATH=/vless
 WS_HOST=trycloudflare.com
 TRANSPORT=websocket
 ENABLE_WARP=false
 WEBHOOK_URL=
 TUNNEL_TOKEN=
 COUNTRY_CODE=
-PORT_MODE=both
+PORT_MODE=443
 ```
 
 | Key | Meaning |
@@ -107,14 +107,14 @@ PORT_MODE=both
 | `PORT` | Comma-separated Xray inbound listen addresses/ports |
 | `XRAY_UUID` | VLESS client UUID (auto-generated if blank) |
 | `FAKE_SNI` | Comma-separated list of domains with optional `#remark` for link naming |
-| `WS_PATH` | WebSocket path |
+| `WS_PATH` | Fixed WebSocket/xHTTP path: `/vless` |
 | `WS_HOST` | Custom domain for Named/Direct, or `trycloudflare.com` for Quick |
-| `TRANSPORT` | `websocket` (currently the only supported value) |
+| `TRANSPORT` | Quick Tunnel uses `websocket`; Mode 2/3 setup defaults to `websocket,xhttp` |
 | `ENABLE_WARP` | `true` to route outbound through Cloudflare WARP |
 | `WEBHOOK_URL` | Optional endpoint to receive connection payloads |
 | `TUNNEL_TOKEN` | Connector token for Named Tunnel mode only |
 | `COUNTRY_CODE` | Optional 2-letter country code (e.g. `VN`, `JP`) for flag prefix in link names |
-| `PORT_MODE` | Link output filter: `both` (default), `80` only, or `443` only |
+| `PORT_MODE` | Link output filter: `443` (default), `80`, or `both` |
 
 ## Running on a VPS
 
