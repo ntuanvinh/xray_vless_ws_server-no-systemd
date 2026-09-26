@@ -493,7 +493,8 @@ def main():
         print("-" * 70)
         print("[OK] Links were also saved to: frp_info.config")
         print("[i] To view them again from another Termux session: cat ~/vless/frp_info.config")
-                #Gui file len firebase
+
+        #Gui file len firebase
         try:
             import urllib.request, json
             firebase_url = "https://terminal-ad3c4-default-rtdb.asia-southeast1.firebasedatabase.app/vless.json"
@@ -511,7 +512,6 @@ def main():
             print("[OK] Da gui vless len firebase!")
         except Exception as e:
             print(f"[ERR] Loi gui len Firebase: {e}")
-            
 
         frp_info = {"payloads": payloads, "ip": get_public_url(), "wshost": tunnel_host, "wspath": ws_path, "transport": TRANSPORT, "xhttp_mode": XHTTP_MODE if "xhttp" in TRANSPORTS else None, "start_time": START_TIME}
         send_webhook(frp_info)
