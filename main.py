@@ -494,75 +494,75 @@ def main():
         print("[OK] Links were also saved to: frp_info.config")
         print("[i] To view them again from another Termux session: cat ~/vless/frp_info.config")
 
-# Gui du lieu len Firebase (Kiem tra BO QUA link trung va THEM CONG 443/80 vao ten node)
-try:
-    import urllib.request, json, re
-    
-    # URL Firebase
-    firebase_url = "https://terminal-ad3c4-default-rtdb.asia-southeast1.firebasedatabase.app/vless.json"
-    
-    # 1. Lay tat ca cac link dang co san tren Firebase ve de kiem tra
-    existing_links = set()
-    try:
-        get_req = urllib.request.Request(firebase_url, method='GET')
-        with urllib.request.urlopen(get_req) as response:
-            existing_data = json.loads(response.read().decode('utf-8'))
+        # Gui du lieu len Firebase (Kiem tra BO QUA link trung va THEM CONG 443/80 vao ten node)
+        try:
+            import urllib.request, json, re
             
-            if existing_data and isinstance(existing_data, dict):
-                for item in existing_data.values():
-                    if isinstance(item, dict) and 'content' in item:
-                        # Tach nho tung dong de luu vao tap hop kiem tra
-                        for line in item['content'].split('\n'):
-                            if line.strip():
-                                existing_links.add(line.strip())
-                    elif isinstance(item, str):
-                        existing_links.add(item.strip())
-    except Exception as fetch_err:
-        print(f"[WARN] Khong the tai du lieu cu tu Firebase (co the do Firebase dang trong): {fetch_err}")
-
-    # 2. Doc file frp_info.config cuc bo va xu ly them cong 443 / 80 vao cuoi
-    local_links = []
-    with open("frp_info.config", "r", encoding="utf-8") as f:
-        for line in f.readlines():
-            link = line.strip()
-            if not link:
-                continue
-                
-            # Kiem tra va them suffix 443 hoac 80 neu chua co
-            match = re.search(r':(443|80)([\?\#/]|$)', link)
-            if match:
-                port = match.group(1)
-                suffix = f" {port}"
-                if not link.endswith(suffix):
-                    link += suffix
+            # URL Firebase
+            firebase_url = "https://terminal-ad3c4-default-rtdb.asia-southeast1.firebasedatabase.app/vless.json"
+            
+            # 1. Lay tat ca cac link dang co san tren Firebase ve de kiem tra
+            existing_links = set()
+            try:
+                get_req = urllib.request.Request(firebase_url, method='GET')
+                with urllib.request.urlopen(get_req) as response:
+                    existing_data = json.loads(response.read().decode('utf-8'))
                     
-            local_links.append(link)
-                
-    added_count = 0
-    skipped_count = 0
-    
-    # 3. Duyet tung link va chi gui link chua ton tai
-    for link in local_links:
-        if link in existing_links:
-            skipped_count += 1
-            continue # Bo qua link trung
+                    if existing_data and isinstance(existing_data, dict):
+                        for item in existing_data.values():
+                            if isinstance(item, dict) and 'content' in item:
+                                # Tach nho tung dong de luu vao tap hop kiem tra
+                                for line in item['content'].split('\n'):
+                                    if line.strip():
+                                        existing_links.add(line.strip())
+                            elif isinstance(item, str):
+                                existing_links.add(item.strip())
+            except Exception as fetch_err:
+                print(f"[WARN] Khong the tai du lieu cu tu Firebase (co the do Firebase dang trong): {fetch_err}")
+        
+            # 2. Doc file frp_info.config cuc bo va xu ly them cong 443 / 80 vao cuoi
+            local_links = []
+            with open("frp_info.config", "r", encoding="utf-8") as f:
+                for line in f.readlines():
+                    link = line.strip()
+                    if not link:
+                        continue
+                        
+                    # Kiem tra va them suffix 443 hoac 80 neu chua co
+                    match = re.search(r':(443|80)([\?\#/]|$)', link)
+                    if match:
+                        port = match.group(1)
+                        suffix = f" {port}"
+                        if not link.endswith(suffix):
+                            link += suffix
+                            
+                    local_links.append(link)
+                        
+            added_count = 0
+            skipped_count = 0
             
-        req = urllib.request.Request(
-            firebase_url, 
-            data=json.dumps({"content": link}).encode('utf-8'),
-            headers={'Content-Type': 'application/json'},
-            method='POST'
-        )
-        urllib.request.urlopen(req)
+            # 3. Duyet tung link va chi gui link chua ton tai
+            for link in local_links:
+                if link in existing_links:
+                    skipped_count += 1
+                    continue # Bo qua link trung
+                    
+                req = urllib.request.Request(
+                    firebase_url, 
+                    data=json.dumps({"content": link}).encode('utf-8'),
+                    headers={'Content-Type': 'application/json'},
+                    method='POST'
+                )
+                urllib.request.urlopen(req)
+                
+                # Them link vua day vao set de tranh bi trung lap ngay trong cung mot luot gui
+                existing_links.add(link) 
+                added_count += 1
+                
+            print(f"[OK] Da hoan tat: Them moi {added_count} link, Bo qua {skipped_count} link trung lap.")
         
-        # Them link vua day vao set de tranh bi trung lap ngay trong cung mot luot gui
-        existing_links.add(link) 
-        added_count += 1
-        
-    print(f"[OK] Da hoan tat: Them moi {added_count} link, Bo qua {skipped_count} link trung lap.")
-
-except Exception as e:
-    print(f"[ERR] Loi khi tai len Firebase: {e}")
+        except Exception as e:
+            print(f"[ERR] Loi khi tai len Firebase: {e}")
             
         frp_info = {"payloads": payloads, "ip": get_public_url(), "wshost": tunnel_host, "wspath": ws_path, "transport": TRANSPORT, "xhttp_mode": XHTTP_MODE if "xhttp" in TRANSPORTS else None, "start_time": START_TIME}
         send_webhook(frp_info)
