@@ -505,7 +505,7 @@ def main():
             with open("frp_info.config", "r", encoding="utf-8") as f:
                 links = [line.strip() for line in f.readlines() if line.strip()]
                 
-            # Quret tung link va đay len Firebase nhu mot ban ghi hoan toan doc lap
+            # Quet tung link va đay len Firebase nhu mot ban ghi hoan toan doc lap
             for link in links:
                 req = urllib.request.Request(
                     firebase_url, 
