@@ -270,41 +270,11 @@ def main():
             try: dst.shutdown(socket.SHUT_WR)
             except OSError: pass
     def handle_demux_connection(client_conn, ws_port, xhttp_port):
-            client_conn.settimeout(3.0)
-            try: data = client_conn.recv(8192, socket.MSG_PEEK)
-            except OSError: data = b""
-            client_conn.settimeout(None)
-    
-            if not data:
-                client_conn.close()
-                return
-    
-            data_lower = data.lower()
-            
-            if b"http/" in data_lower:
-                # 1. Bat buoc phai dung PATH bi mat (LUU Y: Thay /vless bang PATH thuc te)
-                has_secret_path = b" /vless" in data_lower
-                
-                # 2. Nhan dien trinh duyet THAT: Xin tai trang HTML VA KHONG PHAI la ket noi Websocket
-                is_real_browser = b"text/html" in data_lower and b"upgrade: websocket" not in data_lower
-                
-                # Neu KHONG CO path bi mat HOAC LA trình duyet thật -> Ngat ket noi (Error 521)
-                if not has_secret_path or is_real_browser:
-                    import struct
-                    try:
-                        client_conn.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack('ii', 1, 0))
-                    except: pass
-                    client_conn.close()
-                    return
-    
-            # Neu la traffic VPN hop le (bao gom ca V2Tun), chuyen tiep cho Xray
-            is_vpn_ws = b"upgrade: websocket" in data_lower
-            try: backend_conn = socket.create_connection(("127.0.0.1", ws_port if is_vpn_ws else xhttp_port), timeout=5)
-            except OSError:
-                client_conn.close(); return
-                
-            threading.Thread(target=pipe_bytes, args=(client_conn, backend_conn), daemon=True).start()
-            threading.Thread(target=pipe_bytes, args=(backend_conn, client_conn), daemon=True).start()
+        try: backend_conn = socket.create_connection(("127.0.0.1", ws_port if peek_is_websocket(client_conn) else xhttp_port), timeout=5)
+        except OSError:
+            client_conn.close(); return
+        threading.Thread(target=pipe_bytes, args=(client_conn, backend_conn), daemon=True).start()
+        threading.Thread(target=pipe_bytes, args=(backend_conn, client_conn), daemon=True).start()
 
     def start_demux_server(listen_ip, listen_port, ws_port, xhttp_port):
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
