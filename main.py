@@ -463,12 +463,21 @@ def main():
             params = f"type={'ws' if transport == 'websocket' else 'xhttp'}&encryption=none&security="
             xhttp_params = f"&mode={XHTTP_MODE}" if transport == "xhttp" else ""
             link_name = urllib.parse.quote(f"{label} {'WS' if transport == 'websocket' else 'XHTTP'}", safe='')
+            
             if PORT_MODE in ("443", "both"):
-                tls_params = f"tls&path={encoded_path}&host={tunnel_host_info}&sni={tunnel_host_info}{xhttp_params}"
+                # Tao chuoi ECH va ma hoa URL (URL-encode)
+                raw_ech = f"{tunnel_host_info}+https://1.1.1.1/dns-query"
+                encoded_ech = urllib.parse.quote(raw_ech, safe='')
+                
+                # Them echConfigList vao bo tham so TLS
+                tls_params = f"tls&echConfigList={encoded_ech}&path={encoded_path}&host={tunnel_host_info}&sni={tunnel_host_info}{xhttp_params}"
                 if transport == "xhttp": tls_params += "&alpn=h3%2Ch2"
+                
                 payloads.append(f"vless://{uuid_str}@{sni}:443?{params}{tls_params}#{link_name}")
+                
             if PORT_MODE in ("80", "both") and RUN_MODE != "direct":
                 payloads.append(f"vless://{uuid_str}@{sni}:80?{params}&path={encoded_path}&host={tunnel_host_info}{xhttp_params}#{link_name}")
+
 
         for sni_entry in fake_sni.split(","):
             sni_entry = sni_entry.strip()
