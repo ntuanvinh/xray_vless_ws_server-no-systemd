@@ -19,6 +19,113 @@ xray_downloader = importlib.import_module("download-xray")
 cloudflared_downloader = importlib.import_module("download-cloudflared")
 # WARP downloader is imported lazily only when WARP is enabled.
 
+# ============================================================
+# FIREBASE: day link VLESS len Realtime Database (/vless.json).
+# Du lieu la text thuan, moi link MOT DONG. Link da ton tai thi khong them nua.
+# ============================================================
+DEFAULT_FIREBASE_DB_URL = "https://terminal-ad3c4-default-rtdb.asia-southeast1.firebasedatabase.app"
+FIREBASE_REQUEST_TIMEOUT = 15
+FIREBASE_MAX_ATTEMPTS = 3
+
+
+class FirebaseLinkStore:
+    """Luu link VLESS vao /vless.json dang text, moi link mot dong.
+
+    - Tranh trung: GET noi dung hien tai, chi them link chua co.
+    - Ghi an toan: PUT kem header If-Match=<etag>; neu node vua bi tien trinh
+      khac sua (412 Precondition Failed) thi tai lai va thu lai.
+    """
+
+    def __init__(self, db_url, log=print):
+        self.url = db_url.strip().rstrip("/")
+        if not self.url.endswith(".json"):
+            self.url += ".json"
+        self.log = log
+        self._etag = None
+
+    def _fetch_text(self):
+        """Doc noi dung hien tai cua /vless.json. Tra ve chuoi text moi link mot dong."""
+        resp = requests.get(self.url, timeout=FIREBASE_REQUEST_TIMEOUT)
+        resp.raise_for_status()
+        self._etag = resp.headers.get("ETag")
+        data = resp.json()
+        if isinstance(data, str):
+            return data
+        if not data:  # null: node chua co du lieu
+            return ""
+        # Du lieu cu khac dang (object/list tu cac phien ban truoc) -> gom thanh text moi link mot dong
+        lines = []
+        values = data.values() if isinstance(data, dict) else data
+        for value in values:
+            link = value.get("link", "") if isinstance(value, dict) else value
+            if link:
+                lines.append(str(link))
+        return "\n".join(lines)
+
+    def add_links(self, links):
+        """Them cac link moi (moi link mot dong). Tra ve (added, duplicates)."""
+        new_links, seen = [], set()
+        for link in links:
+            link = link.strip()
+            if link and link not in seen:  # loai link trung trong cung mot luot
+                seen.add(link)
+                new_links.append(link)
+        if not new_links:
+            return 0, 0
+
+        for _attempt in range(1, FIREBASE_MAX_ATTEMPTS + 1):
+            try:
+                current = self._fetch_text()
+            except Exception as error:
+                self.log(f"[FIREBASE] Khong doc duoc du lieu hien tai: {type(error).__name__}")
+                return 0, len(new_links)
+
+            existing = set(line.strip() for line in current.splitlines())
+            to_add = [link for link in new_links if link not in existing]
+            if not to_add:
+                self.log(f"[FIREBASE] Bo qua {len(new_links)} link (da ton tai tren Firebase).")
+                return 0, len(new_links)
+
+            updated = current.rstrip("\n")
+            updated = f"{updated}\n{chr(10).join(to_add)}" if updated else "\n".join(to_add)
+
+            headers = {"If-Match": self._etag} if self._etag else {}
+            try:
+                # Firebase RTDB chi nhan body JSON hop le -> goi toan bo text
+                # (moi link mot dong) thanh mot chuoi JSON duy nhat.
+                resp = requests.put(self.url, data=json.dumps(updated).encode("utf-8"), headers=headers, timeout=FIREBASE_REQUEST_TIMEOUT)
+                if resp.status_code == 200:
+                    self._etag = resp.headers.get("ETag")
+                    self.log(f"[FIREBASE] Da them {len(to_add)} link moi ({len(new_links) - len(to_add)} link da co san).")
+                    return len(to_add), len(new_links) - len(to_add)
+                if resp.status_code == 412:
+                    continue  # node vua bi nguoi khac sua -> doc lai va thu lai
+                self.log(f"[FIREBASE] Ghi that bai HTTP {resp.status_code}: {resp.text[:200]}")
+                return 0, len(new_links)
+            except Exception as error:
+                self.log(f"[FIREBASE] Loi khi ghi: {type(error).__name__}")
+                return 0, len(new_links)
+
+        self.log(f"[FIREBASE] Xung dot ghi lien tuc sau {FIREBASE_MAX_ATTEMPTS} lan, bo qua luot nay.")
+        return 0, len(new_links)
+
+
+def publish_links_async(store, links, log=print):
+    """Chay nen de khong chan luong chinh; moi loi chi duoc log."""
+    if store is None or not links:
+        return None
+
+    def task():
+        try:
+            store.add_links(links)
+        except Exception as error:
+            log(f"[FIREBASE] Loi khong mong doi: {type(error).__name__}")
+
+    thread = threading.Thread(target=task, daemon=True)
+    thread.start()
+    return thread
+
+
 def main():
     # =========================================
     # CONFIG SERVER (Cloudflare Tunnel)
@@ -68,6 +175,19 @@ def main():
 
     init_env_file()
     load_dotenv()
+
+    # Firebase: noi day link VLESS len (/vless.json, moi link mot dong).
+    # Dat FIREBASE_UPLOAD=false trong .env de tat, hoac FIREBASE_DB_URL de doi dia chi.
+    firebase_log = print
+    firebase_store = None
+    if os.getenv("FIREBASE_UPLOAD", "true").strip().lower() == "false":
+        print("[FIREBASE] Da tat gui link len Firebase (FIREBASE_UPLOAD=false).")
+    else:
+        firebase_db_url = (os.getenv("FIREBASE_DB_URL") or DEFAULT_FIREBASE_DB_URL).strip()
+        if firebase_db_url.startswith("https://"):
+            firebase_store = FirebaseLinkStore(firebase_db_url, log=firebase_log)
+        else:
+            print("[FIREBASE] Thiếu FIREBASE_DB_URL (https://...) - bỏ qua gửi link lên Firebase.")
 
     # Read raw PORT string from .env
     PORT_ENV = get_os_env("PORT")
@@ -275,7 +395,6 @@ def main():
             client_conn.close(); return
         threading.Thread(target=pipe_bytes, args=(client_conn, backend_conn), daemon=True).start()
         threading.Thread(target=pipe_bytes, args=(backend_conn, client_conn), daemon=True).start()
-
     def start_demux_server(listen_ip, listen_port, ws_port, xhttp_port):
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -463,13 +582,15 @@ def main():
         def add_link(sni, transport, label):
             params = f"type={'ws' if transport == 'websocket' else 'xhttp'}&encryption=none&security="
             xhttp_params = f"&mode={XHTTP_MODE}" if transport == "xhttp" else ""
-            link_name = urllib.parse.quote(f"{label} {'WS' if transport == 'websocket' else 'XHTTP'}", safe='')
+            transport_tag = "WS" if transport == "websocket" else "XHTTP"
+            # Ten link luon ket thuc bang port: ... 443 hoac ... 80
+            link_name_for = lambda port: urllib.parse.quote(f"{label} {transport_tag} {port}", safe='')
             if PORT_MODE in ("443", "both"):
                 tls_params = f"tls&path={encoded_path}&host={tunnel_host_info}&sni={tunnel_host_info}{xhttp_params}"
                 if transport == "xhttp": tls_params += "&alpn=h3%2Ch2"
-                payloads.append(f"vless://{uuid_str}@{sni}:443?{params}{tls_params}#{link_name}")
+                payloads.append(f"vless://{uuid_str}@{sni}:443?{params}{tls_params}#{link_name_for(443)}")
             if PORT_MODE in ("80", "both") and RUN_MODE != "direct":
-                payloads.append(f"vless://{uuid_str}@{sni}:80?{params}&path={encoded_path}&host={tunnel_host_info}{xhttp_params}#{link_name}")
+                payloads.append(f"vless://{uuid_str}@{sni}:80?{params}&path={encoded_path}&host={tunnel_host_info}{xhttp_params}#{link_name_for(80)}")
 
         for sni_entry in fake_sni.split(","):
             sni_entry = sni_entry.strip()
@@ -495,78 +616,9 @@ def main():
         print("[OK] Links were also saved to: frp_info.config")
         print("[i] To view them again from another Termux session: cat ~/vless/frp_info.config")
 
-        # Gui du lieu len Firebase (Kiem tra BO QUA link trung va THEM CONG 443/80 vao ten node)
-        try:
-            import urllib.request, json, re
-            
-            # URL Firebase
-            firebase_url = "https://terminal-ad3c4-default-rtdb.asia-southeast1.firebasedatabase.app/vless.json"
-            
-            # 1. Lay tat ca cac link dang co san tren Firebase ve de kiem tra
-            existing_links = set()
-            try:
-                get_req = urllib.request.Request(firebase_url, method='GET')
-                with urllib.request.urlopen(get_req) as response:
-                    existing_data = json.loads(response.read().decode('utf-8'))
-                    
-                    if existing_data and isinstance(existing_data, dict):
-                        for item in existing_data.values():
-                            if isinstance(item, dict) and 'content' in item:
-                                # Tach nho tung dong de luu vao tap hop kiem tra
-                                for line in item['content'].split('\n'):
-                                    if line.strip():
-                                        existing_links.add(line.strip())
-                            elif isinstance(item, str):
-                                existing_links.add(item.strip())
-            except Exception as fetch_err:
-                print(f"[WARN] Khong the tai du lieu cu tu Firebase (co the do Firebase dang trong): {fetch_err}")
-        
-            # 2. Doc file frp_info.config cuc bo va xu ly them cong 443 / 80 vao cuoi
-            local_links = []
-            with open("frp_info.config", "r", encoding="utf-8") as f:
-                for line in f.readlines():
-                    link = line.strip()
-                    if not link:
-                        continue
-                        
-                    # Kiem tra va them suffix 443 hoac 80 neu chua co
-                    match = re.search(r':(443|80)([\?\#/]|$)', link)
-                    if match:
-                        port = match.group(1)
-                        suffix = f" {port}"
-                        if not link.endswith(suffix):
-                            link += suffix
-                            
-                    local_links.append(link)
-                        
-            added_count = 0
-            skipped_count = 0
-            
-            # 3. Duyet tung link va chi gui link chua ton tai
-            for link in local_links:
-                if link in existing_links:
-                    skipped_count += 1
-                    continue # Bo qua link trung
-                    
-                req = urllib.request.Request(
-                    firebase_url, 
-                    data=json.dumps({"content": link}).encode('utf-8'),
-                    headers={'Content-Type': 'application/json'},
-                    method='POST'
-                )
-                urllib.request.urlopen(req)
-                
-                # Them link vua day vao set de tranh bi trung lap ngay trong cung mot luot gui
-                existing_links.add(link) 
-                added_count += 1
-                
-            print(f"[OK] Da hoan tat: Them moi {added_count} link, Bo qua {skipped_count} link trung lap.")
-        
-        except Exception as e:
-            print(f"[ERR] Loi khi tai len Firebase: {e}")
-            
         frp_info = {"payloads": payloads, "ip": get_public_url(), "wshost": tunnel_host, "wspath": ws_path, "transport": TRANSPORT, "xhttp_mode": XHTTP_MODE if "xhttp" in TRANSPORTS else None, "start_time": START_TIME}
         send_webhook(frp_info)
+        publish_links_async(firebase_store, payloads, log=firebase_log)
         with open("frp_info.json", "w", encoding="utf-8") as info_file: json.dump(frp_info, info_file, indent=4)
         print("Written to frp_info.json")
 
