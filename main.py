@@ -275,19 +275,36 @@ def main():
             except OSError: data = b""
             client_conn.settimeout(None)
     
-            # Chan truy cap tu trinh duyet (GET vao trang chu hoac favicon)
-            # Bieu thuc nay co khoang trang sau / de tranh chan nham /vless
-            if b"GET / HTTP" in data or b"GET /favicon.ico" in data:
-                import struct
-                try:
-                    # Gui co RST de ep ngat ket noi tho bao, tao ra loi 521 tren Cloudflare
-                    client_conn.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack('ii', 1, 0))
-                except: pass
+            if not data:
                 client_conn.close()
                 return
     
-            is_ws = b"upgrade: websocket" in data.lower()
-            try: backend_conn = socket.create_connection(("127.0.0.1", ws_port if is_ws else xhttp_port), timeout=5)
+            data_lower = data.lower()
+            
+            # Neu phat hien bat ky giao thuc HTTP nao
+            if b"http/" in data_lower:
+                # 1. Bat buoc phai co duong dan bi mat. 
+                # (LUU Y: Thay chu /vless bang PATH thuc te cua ban)
+                has_secret_path = b" /vless" in data_lower 
+                
+                # 2. Khong duoc phep la trinh duyet
+                is_browser = b"text/html" in data_lower or b"mozilla" in data_lower
+                
+                # Cho phep di tiep chi khi thoa man ca 2 dieu kien (Whitelist)
+                is_valid_vpn = has_secret_path and not is_browser
+                
+                # Neu gap 1 trong 2 dieu kien -> Ngat thong bao, tra ve Error 521
+                if not is_valid_vpn:
+                    import struct
+                    try:
+                        client_conn.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack('ii', 1, 0))
+                    except: pass
+                    client_conn.close()
+                    return
+    
+            # Neu la traffic VPN hop le, chuyen tiep cho Xray
+            is_vpn_ws = b"upgrade: websocket" in data_lower
+            try: backend_conn = socket.create_connection(("127.0.0.1", ws_port if is_vpn_ws else xhttp_port), timeout=5)
             except OSError:
                 client_conn.close(); return
                 
