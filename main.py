@@ -281,15 +281,20 @@ def main():
     
             data_lower = data.lower()
             
+            # Neu phat hien bat ky giao thuc HTTP nao
             if b"http/" in data_lower:
-                # 1. Bat buoc phai dung PATH bi mat (LUU Y: Thay /vless bang PATH thuc te)
-                has_secret_path = b" /vless" in data_lower
+                # 1. Bat buoc phai co duong dan bi mat. 
+                # (LUU Y: Thay chu /vless bang PATH thuc te cua ban)
+                has_secret_path = b" /vless" in data_lower 
                 
-                # 2. Nhan dien trinh duyet THAT: Xin tai trang HTML VA KHONG PHAI la ket noi Websocket
-                is_real_browser = b"text/html" in data_lower and b"upgrade: websocket" not in data_lower
+                # 2. Khong duoc phep la trinh duyet
+                is_browser = b"text/html" in data_lower or b"mozilla" in data_lower
                 
-                # Neu KHONG CO path bi mat HOAC LA trình duyet thật -> Ngat ket noi (Error 521)
-                if not has_secret_path or is_real_browser:
+                # Cho phep di tiep chi khi thoa man ca 2 dieu kien (Whitelist)
+                is_valid_vpn = has_secret_path and not is_browser
+                
+                # Neu rot 1 trong 2 dieu kien -> Ngat tho bao, tra ve Error 521
+                if not is_valid_vpn:
                     import struct
                     try:
                         client_conn.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack('ii', 1, 0))
@@ -297,7 +302,7 @@ def main():
                     client_conn.close()
                     return
     
-            # Neu la traffic VPN hop le (bao gom ca V2Tun), chuyen tiep cho Xray
+            # Neu la traffic VPN hop le, chuyen tiep cho Xray
             is_vpn_ws = b"upgrade: websocket" in data_lower
             try: backend_conn = socket.create_connection(("127.0.0.1", ws_port if is_vpn_ws else xhttp_port), timeout=5)
             except OSError:
