@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="https://github.com/takeshi7502/xray_vless_ws_server.git"
+REPO="https://github.com/ntuanvinh/xray_vless_ws_server-no-systemd.git"
 INSTALL_DIR="${HOME}/vless"
 
 GREEN='\033[0;32m'; CYAN='\033[0;36m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
